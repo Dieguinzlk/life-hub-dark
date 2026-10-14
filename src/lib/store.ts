@@ -18,7 +18,13 @@ export type Bill = {
   paid: boolean;
 };
 
-export type Debt = { id: string; name: string; total: number; paid: number };
+export type Debt = {
+  id: string;
+  name: string;
+  total: number;
+  paid: number;
+};
+
 export type Priority = "alta" | "media" | "baixa";
 
 export type Task = {
@@ -28,6 +34,8 @@ export type Task = {
   date: string;
   time?: string;
   priority?: Priority;
+  goalId?: string;
+  goalArea?: "financas" | "saude";
 };
 
 export type Exercise = {
@@ -38,7 +46,11 @@ export type Exercise = {
   weight?: number;
 };
 
-export type WorkoutPlan = { id: string; name: string; exercises: Exercise[] };
+export type WorkoutPlan = {
+  id: string;
+  name: string;
+  exercises: Exercise[];
+};
 
 export type WorkoutLog = {
   id: string;
@@ -49,7 +61,33 @@ export type WorkoutLog = {
   notes?: string;
 };
 
-export type Habit = { id: string; name: string; doneDates: string[] };
+export type Habit = {
+  id: string;
+  name: string;
+  doneDates: string[];
+};
+
+export type FinanceGoal = {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline?: string;
+  createdAt: string;
+  notes?: string;
+};
+
+export type HealthGoal = {
+  id: string;
+  name: string;
+  category: "peso" | "treinos" | "habito" | "outra";
+  currentValue: number;
+  targetValue: number;
+  unit: string;
+  deadline?: string;
+  createdAt: string;
+  notes?: string;
+};
 
 export type AppData = {
   version: 1;
@@ -61,6 +99,8 @@ export type AppData = {
   plans: WorkoutPlan[];
   workoutLogs: WorkoutLog[];
   workoutGoal: number;
+  financeGoals: FinanceGoal[];
+  healthGoals: HealthGoal[];
 };
 
 const KEY = "gerenciador-de-vida:v1";
@@ -75,11 +115,35 @@ const empty: AppData = {
   plans: [],
   workoutLogs: [],
   workoutGoal: 3,
+  financeGoals: [],
+  healthGoals: [],
 };
 
 let state: AppData = empty;
 let loaded = false;
 const listeners = new Set<() => void>();
+
+function normalizeData(saved: Partial<AppData>): AppData {
+  return {
+    ...empty,
+    ...saved,
+    transactions: Array.isArray(saved.transactions) ? saved.transactions : [],
+    bills: Array.isArray(saved.bills) ? saved.bills : [],
+    debts: Array.isArray(saved.debts) ? saved.debts : [],
+    tasks: Array.isArray(saved.tasks) ? saved.tasks : [],
+    habits: Array.isArray(saved.habits) ? saved.habits : [],
+    plans: Array.isArray(saved.plans) ? saved.plans : [],
+    workoutLogs: Array.isArray(saved.workoutLogs) ? saved.workoutLogs : [],
+    financeGoals: Array.isArray(saved.financeGoals) ? saved.financeGoals : [],
+    healthGoals: Array.isArray(saved.healthGoals) ? saved.healthGoals : [],
+    workoutGoal:
+      Number.isInteger(saved.workoutGoal) &&
+      Number(saved.workoutGoal) >= 1 &&
+      Number(saved.workoutGoal) <= 7
+        ? Number(saved.workoutGoal)
+        : 3,
+  };
+}
 
 function load() {
   if (loaded || typeof window === "undefined") return;
@@ -88,28 +152,20 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const saved = JSON.parse(raw);
-      state = {
-        ...empty,
-        ...saved,
-        workoutGoal:
-          Number.isInteger(saved.workoutGoal) &&
-          saved.workoutGoal >= 1 &&
-          saved.workoutGoal <= 7
-            ? saved.workoutGoal
-            : 3,
-      };
+      state = normalizeData(JSON.parse(raw));
     }
   } catch {
-    /* Mantém os valores iniciais se os dados estiverem inválidos. */
+    // Não apaga os dados se houver um erro de leitura.
   }
 }
 
 function setState(next: AppData) {
   state = next;
+
   if (typeof window !== "undefined") {
     localStorage.setItem(KEY, JSON.stringify(state));
   }
+
   listeners.forEach((listener) => listener());
 }
 
@@ -138,11 +194,15 @@ export const uid = () =>
 
 export const today = () => {
   const date = new Date();
+
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
 
 export const brl = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 
 export const fmtDate = (value: string) => {
   const [year, month, day] = value.split("-");
@@ -151,9 +211,11 @@ export const fmtDate = (value: string) => {
 
 export function exportBackup() {
   load();
+
   const blob = new Blob([JSON.stringify(state, null, 2)], {
     type: "application/json",
   });
+
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = `backup-gerenciador-de-vida-${today()}.json`;
@@ -163,20 +225,12 @@ export function exportBackup() {
 
 export async function importBackup(file: File) {
   const parsed = JSON.parse(await file.text());
+
   if (!parsed || !Array.isArray(parsed.transactions)) {
     throw new Error("Arquivo inválido");
   }
 
-  setState({
-    ...empty,
-    ...parsed,
-    workoutGoal:
-      Number.isInteger(parsed.workoutGoal) &&
-      parsed.workoutGoal >= 1 &&
-      parsed.workoutGoal <= 7
-        ? parsed.workoutGoal
-        : 3,
-  });
+  setState(normalizeData(parsed));
 }
 
 export function clearAll() {
