@@ -145,10 +145,10 @@ function TaskDialog({ open, onOpenChange, task }: { open: boolean; onOpenChange:
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    const fields = { title: title.trim(), date: date || today(), time: time || undefined, priority };
+    const fields: Pick<Task, "title" | "date" | "priority"> & { time?: string } = { title: title.trim(), date: date || today(), priority, ...(time ? { time } : {}) };
     update((d) => ({
       ...d,
-      tasks: task ? d.tasks.map((y) => (y.id === task.id ? { ...y, ...fields } : y)) : [...d.tasks, { id: uid(), done: false, ...fields }],
+      tasks: task ? d.tasks.map((y) => (y.id === task.id ? { ...y, time: undefined, ...fields } : y)) : [...d.tasks, { id: uid(), done: false, ...fields }],
     }));
     onOpenChange(false);
   }

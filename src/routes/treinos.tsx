@@ -175,7 +175,7 @@ function LogDialog({ plan, onClose, onSaved }: { plan: WorkoutPlan; onClose: () 
     e.preventDefault();
     const exercises = fromRows(rows);
     if (exercises.length === 0) return toast.error("Registre pelo menos um exercício.");
-    update((d) => ({ ...d, workoutLogs: [...d.workoutLogs, { id: uid(), planId: plan.id, planName: plan.name, date: date || today(), exercises, notes: notes.trim() || undefined }] }));
+    update((d) => ({ ...d, workoutLogs: [...d.workoutLogs, { id: uid(), planId: plan.id, planName: plan.name, date: date || today(), exercises, ...(notes.trim() ? { notes: notes.trim() } : {}) }] }));
     toast.success("Treino registrado! 💪");
     onSaved();
   }
