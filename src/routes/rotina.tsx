@@ -25,14 +25,14 @@ const PRI: Record<Priority, { label: string; cls: string; order: number }> = {
 };
 
 function addDays(base: string, n: number) {
-  const [y, m, d] = base.split("-").map(Number);
+  const [y = 2000, m = 1, d = 1] = base.split("-").map(Number);
   const dt = new Date(y, m - 1, d + n);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 function dayLabel(s: string, t: string) {
   if (s === t) return "Hoje";
   if (s === addDays(t, 1)) return "Amanhã";
-  const [y, m, d] = s.split("-").map(Number);
+  const [y = 2000, m = 1, d = 1] = s.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short" });
 }
 const sortTasks = (a: Task, b: Task) =>
@@ -148,7 +148,7 @@ function TaskDialog({ open, onOpenChange, task }: { open: boolean; onOpenChange:
     const fields: Pick<Task, "title" | "date" | "priority"> & { time?: string } = { title: title.trim(), date: date || today(), priority, ...(time ? { time } : {}) };
     update((d) => ({
       ...d,
-      tasks: task ? d.tasks.map((y) => (y.id === task.id ? { ...y, time: undefined, ...fields } : y)) : [...d.tasks, { id: uid(), done: false, ...fields }],
+      tasks: task ? d.tasks.map((y) => (y.id === task.id ? (({ time: _t, ...rest }) => ({ ...rest, ...fields }))(y) : y)) : [...d.tasks, { id: uid(), done: false, ...fields }],
     }));
     onOpenChange(false);
   }
