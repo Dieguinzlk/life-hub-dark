@@ -109,7 +109,7 @@ function Treinos() {
 type Row = { id: string; name: string; sets: string; reps: string; weight: string };
 const toRows = (ex: Exercise[]): Row[] => ex.map((e) => ({ id: e.id, name: e.name, sets: String(e.sets), reps: String(e.reps), weight: e.weight ? String(e.weight) : "" }));
 const fromRows = (rows: Row[]): Exercise[] =>
-  rows.filter((r) => r.name.trim()).map((r) => ({ id: r.id, name: r.name.trim(), sets: Math.max(1, Math.round(num(r.sets))), reps: Math.max(1, Math.round(num(r.reps))), weight: num(r.weight) || undefined }));
+  rows.filter((r) => r.name.trim()).map((r) => ({ id: r.id, name: r.name.trim(), sets: Math.max(1, Math.round(num(r.sets))), reps: Math.max(1, Math.round(num(r.reps))), ...(num(r.weight) ? { weight: num(r.weight) } : {}) }));
 const blank = (): Row => ({ id: uid(), name: "", sets: "3", reps: "12", weight: "" });
 
 function ExerciseRows({ rows, setRows }: { rows: Row[]; setRows: (r: Row[]) => void }) {
