@@ -144,7 +144,7 @@ function PlanDialog({ open, onOpenChange, plan }: { open: boolean; onOpenChange:
     e.preventDefault();
     const exercises = fromRows(rows);
     if (!name.trim()) return;
-    if (exercises.length === 0) return toast.error("Adicione pelo menos um exercício.");
+    if (exercises.length === 0) { toast.error("Adicione pelo menos um exercício."); return; }
     update((d) => ({
       ...d,
       plans: plan ? d.plans.map((p) => (p.id === plan.id ? { ...p, name: name.trim(), exercises } : p)) : [...d.plans, { id: uid(), name: name.trim(), exercises }],
@@ -174,7 +174,7 @@ function LogDialog({ plan, onClose, onSaved }: { plan: WorkoutPlan; onClose: () 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const exercises = fromRows(rows);
-    if (exercises.length === 0) return toast.error("Registre pelo menos um exercício.");
+    if (exercises.length === 0) { toast.error("Registre pelo menos um exercício."); return; }
     update((d) => ({ ...d, workoutLogs: [...d.workoutLogs, { id: uid(), planId: plan.id, planName: plan.name, date: date || today(), exercises, ...(notes.trim() ? { notes: notes.trim() } : {}) }] }));
     toast.success("Treino registrado! 💪");
     onSaved();
