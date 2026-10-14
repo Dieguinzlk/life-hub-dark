@@ -191,7 +191,7 @@ function NewDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange: (
   const [kind, setKind] = useState<"receita" | "despesa" | "conta" | "divida">("despesa");
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
-  const [cat, setCat] = useState(CATS[0]);
+  const [cat, setCat] = useState<string>("Alimentação");
   const [date, setDate] = useState(today());
 
   const current = tab === "contas" ? "conta" : tab === "dividas" ? "divida" : kind === "conta" || kind === "divida" ? "despesa" : kind;
