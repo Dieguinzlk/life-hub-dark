@@ -59,7 +59,7 @@ function Financas() {
           <div className="mb-4 grid grid-cols-3 gap-2 text-center">
             <Card className="p-3"><p className="text-xs text-muted-foreground">Receitas</p><p className="text-sm font-semibold text-success">{brl(inc)}</p></Card>
             <Card className="p-3"><p className="text-xs text-muted-foreground">Despesas</p><p className="text-sm font-semibold text-destructive">{brl(exp)}</p></Card>
-            <Card className="p-3"><p className="text-xs text-muted-foreground">Saldo</p><p className="text-sm font-semibold">{brl(inc - exp)}</p></Card>
+            <Card className="p-3"><p className="text-xs text-muted-foreground">Saldo do mês</p><p className="text-sm font-semibold">{brl(inc - exp)}</p></Card>
           </div>
           {byCat.length > 0 && (
             <Card className="mb-4">

@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, Plus, Trash2, Flame, ArrowUpRight, ArrowDownRight, CalendarClock } from "lucide-react";
+import { Check, Plus, Trash2, Flame, ArrowUpRight, ArrowDownRight, CalendarClock, Bell, X } from "lucide-react";
 import { Page, Card } from "@/components/AppShell";
-import { useData, update, uid, today, brl, fmtDate } from "@/lib/store";
+import { useData, update, uid, today, brl, fmtDate, currentBalance } from "@/lib/store";
+import { occurrencesFor, CATEGORIES } from "@/lib/reminders";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,7 +27,12 @@ function Index() {
   const monthTx = data.transactions.filter((x) => x.date.startsWith(month));
   const inc = monthTx.filter((x) => x.type === "receita").reduce((s, x) => s + x.amount, 0);
   const exp = monthTx.filter((x) => x.type === "despesa").reduce((s, x) => s + x.amount, 0);
-  const balance = data.transactions.reduce((s, x) => s + (x.type === "receita" ? x.amount : -x.amount), 0);
+  const balance = currentBalance(data);
+  const hasOpening = data.settings.openingBalance != null;
+  const now = new Date();
+  const hm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const nextReminders = occurrencesFor(data, now).filter((o) => o.status !== "concluido" && (o.time >= hm || o.status === "adiado")).slice(0, 3);
+  const [manageHabits, setManageHabits] = useState(false);
   const upcoming = data.bills.filter((b) => !b.paid).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 3);
   const tasks = data.tasks.filter((x) => x.date === t || !x.done);
   const doneCount = tasks.filter((x) => x.done).length;
@@ -41,6 +47,9 @@ function Index() {
       <div className="bg-hero shadow-glow mb-4 rounded-3xl p-5">
         <p className="text-sm text-accent-foreground">Saldo atual</p>
         <p className="mt-1 font-display text-3xl font-semibold">{brl(balance)}</p>
+        {!hasOpening && (
+          <Link to="/ajustes" className="mt-1 block text-xs text-muted-foreground underline">Informe seu saldo inicial para um valor real</Link>
+        )}
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-xl bg-background/30 p-3">
             <p className="flex items-center gap-1 text-muted-foreground"><ArrowUpRight className="h-4 w-4 text-success" /> Receitas do mês</p>
@@ -64,6 +73,25 @@ function Index() {
           <p className="font-display text-2xl font-semibold">{habitsDone}/{data.habits.length}</p>
         </Card>
       </div>
+
+      <Card className="mb-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-semibold"><Bell className="h-4 w-4 text-primary" /> Próximos lembretes</h2>
+          <Link to="/lembretes" className="text-sm font-semibold text-primary">Ver todos</Link>
+        </div>
+        {nextReminders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{data.reminders.length ? "Nada mais para hoje." : "Crie lembretes para água, refeições e estudos."}</p>
+        ) : (
+          <ul className="space-y-2">
+            {nextReminders.map((o) => (
+              <li key={`${o.reminder.id}-${o.time}`} className="flex items-center justify-between gap-2 text-sm">
+                <span className="min-w-0 truncate">{o.reminder.title} <span className="text-muted-foreground">· {CATEGORIES[o.reminder.category].label}</span></span>
+                <span className="shrink-0 font-semibold">{o.time}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       {upcoming.length > 0 && (
         <Card className="mb-4">
@@ -99,7 +127,7 @@ function Index() {
             <li key={x.id} className="flex items-center gap-3 py-1.5">
               <button
                 aria-label="Concluir"
-                onClick={() => update((d) => ({ ...d, tasks: d.tasks.map((y) => (y.id === x.id ? { ...y, done: !y.done, date: t } : y)) }))}
+                onClick={() => update((d) => ({ ...d, tasks: d.tasks.map((y) => (y.id === x.id ? { ...y, done: !y.done } : y)) }))}
                 className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 ${x.done ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"}`}
               >
                 {x.done && <Check className="h-4 w-4" />}
@@ -112,7 +140,12 @@ function Index() {
       </Card>
 
       <Card>
-        <h2 className="mb-3 font-semibold">Hábitos</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-semibold">Hábitos</h2>
+          {data.habits.length > 0 && (
+            <button onClick={() => setManageHabits((v) => !v)} className="text-sm font-semibold text-primary">{manageHabits ? "Concluir" : "Gerenciar"}</button>
+          )}
+        </div>
         <form
           className="mb-3 flex gap-2"
           onSubmit={(e) => {
@@ -129,6 +162,20 @@ function Index() {
         <div className="flex flex-wrap gap-2">
           {data.habits.map((h) => {
             const done = h.doneDates.includes(t);
+            if (manageHabits) {
+              const rename = () => {
+                const name = prompt("Novo nome do hábito:", h.name)?.trim();
+                if (name) update((d) => ({ ...d, habits: d.habits.map((y) => (y.id === h.id ? { ...y, name } : y)) }));
+              };
+              return (
+                <span key={h.id} className="flex items-center gap-1 rounded-full border bg-secondary py-1 pl-3 pr-1 text-sm">
+                  <button onClick={rename} className="py-1">{h.name}</button>
+                  <button aria-label={`Excluir hábito ${h.name}`} onClick={() => confirm(`Excluir o hábito "${h.name}"?`) && update((d) => ({ ...d, habits: d.habits.filter((y) => y.id !== h.id) }))} className="grid h-7 w-7 place-items-center rounded-full text-destructive">
+                    <X className="h-4 w-4" />
+                  </button>
+                </span>
+              );
+            }
             return (
               <button
                 key={h.id}
@@ -141,7 +188,7 @@ function Index() {
             );
           })}
         </div>
-        {data.habits.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Toque para marcar · segure para excluir</p>}
+        {data.habits.length > 0 && <p className="mt-3 text-xs text-muted-foreground">{manageHabits ? "Toque no nome para renomear" : "Toque para marcar como feito hoje"}</p>}
       </Card>
     </Page>
   );
