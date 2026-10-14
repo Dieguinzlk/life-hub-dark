@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
-import { Home, Wallet, ListChecks, Dumbbell, Settings } from "lucide-react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { Home, Wallet, ListChecks, Dumbbell, LayoutGrid } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function Page({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode }) {
@@ -25,6 +25,8 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 export function BottomNav() {
   const item = "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium text-muted-foreground";
   const active = { className: `${item} text-primary` };
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const inMore = ["/mais", "/lembretes", "/assistente", "/ajustes"].some((p) => path.startsWith(p));
   return (
     <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur">
       <div className="mx-auto flex max-w-md">
@@ -40,8 +42,8 @@ export function BottomNav() {
         <Link to="/treinos" className={item} activeProps={active}>
           <Dumbbell className="h-5 w-5" /> Treinos
         </Link>
-        <Link to="/ajustes" className={item} activeProps={active}>
-          <Settings className="h-5 w-5" /> Ajustes
+        <Link to="/mais" className={inMore ? `${item} text-primary` : item} aria-current={inMore ? "page" : undefined}>
+          <LayoutGrid className="h-5 w-5" /> Mais
         </Link>
       </div>
     </nav>

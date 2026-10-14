@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { BottomNav } from "@/components/AppShell";
+import { ReminderScheduler } from "@/components/ReminderScheduler";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -124,6 +125,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <BottomNav />
+      <ReminderScheduler />
       <Toaster position="top-center" />
     </QueryClientProvider>
   );

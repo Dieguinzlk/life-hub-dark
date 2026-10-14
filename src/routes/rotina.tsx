@@ -98,7 +98,7 @@ function Rotina() {
         </div>
       )}
 
-      <TaskDialog key={editing?.id ?? "new" + String(open)} open={open} onOpenChange={setOpen} task={editing} />
+      <TaskDialog key={(editing?.id ?? "new") + String(open)} open={open} onOpenChange={setOpen} task={editing} />
     </Page>
   );
 }

@@ -11,7 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AjustesRouteImport } from './routes/ajustes'
+import { Route as AssistenteRouteImport } from './routes/assistente'
 import { Route as FinancasRouteImport } from './routes/financas'
+import { Route as LembretesRouteImport } from './routes/lembretes'
+import { Route as MaisRouteImport } from './routes/mais'
 import { Route as RotinaRouteImport } from './routes/rotina'
 import { Route as TreinosRouteImport } from './routes/treinos'
 
@@ -25,9 +28,24 @@ const AjustesRoute = AjustesRouteImport.update({
   path: '/ajustes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssistenteRoute = AssistenteRouteImport.update({
+  id: '/assistente',
+  path: '/assistente',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FinancasRoute = FinancasRouteImport.update({
   id: '/financas',
   path: '/financas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LembretesRoute = LembretesRouteImport.update({
+  id: '/lembretes',
+  path: '/lembretes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MaisRoute = MaisRouteImport.update({
+  id: '/mais',
+  path: '/mais',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RotinaRoute = RotinaRouteImport.update({
@@ -44,14 +62,20 @@ const TreinosRoute = TreinosRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ajustes': typeof AjustesRoute
+  '/assistente': typeof AssistenteRoute
   '/financas': typeof FinancasRoute
+  '/lembretes': typeof LembretesRoute
+  '/mais': typeof MaisRoute
   '/rotina': typeof RotinaRoute
   '/treinos': typeof TreinosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ajustes': typeof AjustesRoute
+  '/assistente': typeof AssistenteRoute
   '/financas': typeof FinancasRoute
+  '/lembretes': typeof LembretesRoute
+  '/mais': typeof MaisRoute
   '/rotina': typeof RotinaRoute
   '/treinos': typeof TreinosRoute
 }
@@ -59,22 +83,53 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ajustes': typeof AjustesRoute
+  '/assistente': typeof AssistenteRoute
   '/financas': typeof FinancasRoute
+  '/lembretes': typeof LembretesRoute
+  '/mais': typeof MaisRoute
   '/rotina': typeof RotinaRoute
   '/treinos': typeof TreinosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ajustes' | '/financas' | '/rotina' | '/treinos'
+  fullPaths:
+    | '/'
+    | '/ajustes'
+    | '/assistente'
+    | '/financas'
+    | '/lembretes'
+    | '/mais'
+    | '/rotina'
+    | '/treinos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ajustes' | '/financas' | '/rotina' | '/treinos'
-  id: '__root__' | '/' | '/ajustes' | '/financas' | '/rotina' | '/treinos'
+  to:
+    | '/'
+    | '/ajustes'
+    | '/assistente'
+    | '/financas'
+    | '/lembretes'
+    | '/mais'
+    | '/rotina'
+    | '/treinos'
+  id:
+    | '__root__'
+    | '/'
+    | '/ajustes'
+    | '/assistente'
+    | '/financas'
+    | '/lembretes'
+    | '/mais'
+    | '/rotina'
+    | '/treinos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AjustesRoute: typeof AjustesRoute
+  AssistenteRoute: typeof AssistenteRoute
   FinancasRoute: typeof FinancasRoute
+  LembretesRoute: typeof LembretesRoute
+  MaisRoute: typeof MaisRoute
   RotinaRoute: typeof RotinaRoute
   TreinosRoute: typeof TreinosRoute
 }
@@ -95,11 +150,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AjustesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/assistente': {
+      id: '/assistente'
+      path: '/assistente'
+      fullPath: '/assistente'
+      preLoaderRoute: typeof AssistenteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/financas': {
       id: '/financas'
       path: '/financas'
       fullPath: '/financas'
       preLoaderRoute: typeof FinancasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lembretes': {
+      id: '/lembretes'
+      path: '/lembretes'
+      fullPath: '/lembretes'
+      preLoaderRoute: typeof LembretesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mais': {
+      id: '/mais'
+      path: '/mais'
+      fullPath: '/mais'
+      preLoaderRoute: typeof MaisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rotina': {
@@ -122,7 +198,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AjustesRoute: AjustesRoute,
+  AssistenteRoute: AssistenteRoute,
   FinancasRoute: FinancasRoute,
+  LembretesRoute: LembretesRoute,
+  MaisRoute: MaisRoute,
   RotinaRoute: RotinaRoute,
   TreinosRoute: TreinosRoute,
 }
