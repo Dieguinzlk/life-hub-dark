@@ -10,7 +10,11 @@ export type Transaction = {
 };
 export type Bill = { id: string; description: string; amount: number; dueDate: string; paid: boolean };
 export type Debt = { id: string; name: string; total: number; paid: number };
-export type Task = { id: string; title: string; done: boolean; date: string };
+export type Priority = "alta" | "media" | "baixa";
+export type Task = { id: string; title: string; done: boolean; date: string; time?: string; priority?: Priority };
+export type Exercise = { id: string; name: string; sets: number; reps: number; weight?: number };
+export type WorkoutPlan = { id: string; name: string; exercises: Exercise[] };
+export type WorkoutLog = { id: string; planId: string; planName: string; date: string; exercises: Exercise[]; notes?: string };
 export type Habit = { id: string; name: string; doneDates: string[] };
 
 export type AppData = {
@@ -20,10 +24,12 @@ export type AppData = {
   debts: Debt[];
   tasks: Task[];
   habits: Habit[];
+  plans: WorkoutPlan[];
+  workoutLogs: WorkoutLog[];
 };
 
 const KEY = "gerenciador-de-vida:v1";
-const empty: AppData = { version: 1, transactions: [], bills: [], debts: [], tasks: [], habits: [] };
+const empty: AppData = { version: 1, transactions: [], bills: [], debts: [], tasks: [], habits: [], plans: [], workoutLogs: [] };
 
 let state: AppData = empty;
 let loaded = false;

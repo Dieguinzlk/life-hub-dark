@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Home, Wallet, ListChecks, Dumbbell, Settings } from "lucide-react";
 import type { ReactNode } from "react";
-import { toast } from "sonner";
 
 export function Page({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode }) {
   return (
@@ -22,7 +21,6 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
   return <section className={`rounded-2xl border bg-card p-4 ${className}`}>{children}</section>;
 }
 
-const soon = () => toast("Este módulo chega na próxima etapa 🚀");
 
 export function BottomNav() {
   const item = "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium text-muted-foreground";
@@ -36,12 +34,12 @@ export function BottomNav() {
         <Link to="/financas" className={item} activeProps={active}>
           <Wallet className="h-5 w-5" /> Finanças
         </Link>
-        <button onClick={soon} className={item}>
+        <Link to="/rotina" className={item} activeProps={active}>
           <ListChecks className="h-5 w-5" /> Rotina
-        </button>
-        <button onClick={soon} className={item}>
+        </Link>
+        <Link to="/treinos" className={item} activeProps={active}>
           <Dumbbell className="h-5 w-5" /> Treinos
-        </button>
+        </Link>
         <Link to="/ajustes" className={item} activeProps={active}>
           <Settings className="h-5 w-5" /> Ajustes
         </Link>
