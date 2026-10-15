@@ -1,6 +1,7 @@
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Trash2, Check } from "lucide-react";
+import { Plus, Trash2, Check, Target, PiggyBank, TrendingUp } from "lucide-react";
 import { Page, Card } from "@/components/AppShell";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useData, update, uid, today, brl, fmtDate } from "@/lib/store";
@@ -9,15 +10,15 @@ export const Route = createFileRoute("/financas")({
   head: () => ({
     meta: [
       { title: "Finanças — Gerenciador de Vida" },
-      { name: "description", content: "Controle receitas, despesas, contas a pagar e dívidas." },
+      { name: "description", content: "Controle receitas, despesas, contas, dívidas e metas financeiras." },
       { property: "og:title", content: "Finanças — Gerenciador de Vida" },
-      { property: "og:description", content: "Controle receitas, despesas, contas a pagar e dívidas." },
+      { property: "og:description", content: "Controle suas finanças e acompanhe suas metas." },
     ],
   }),
   component: Financas,
 });
 
-type Tab = "lancamentos" | "contas" | "dividas";
+type Tab = "lancamentos" | "contas" | "dividas" | "metas";
 const CATS = ["Alimentação", "Moradia", "Transporte", "Saúde", "Lazer", "Educação", "Salário", "Outros"];
 const field = "h-12 w-full rounded-xl border bg-input/40 px-3 text-base outline-none focus:border-primary";
 
@@ -35,21 +36,34 @@ function Financas() {
     tx.filter((x) => x.type === "despesa").reduce<Record<string, number>>((acc, x) => ((acc[x.category] = (acc[x.category] || 0) + x.amount), acc), {}),
   ).sort((a, b) => b[1] - a[1]);
 
-  const tabs: [Tab, string][] = [["lancamentos", "Lançamentos"], ["contas", "Contas"], ["dividas", "Dívidas"]];
+  const tabs: [Tab, string][] = [
+    ["lancamentos", "Lançamentos"],
+    ["contas", "Contas"],
+    ["dividas", "Dívidas"],
+    ["metas", "Metas"],
+  ];
 
   return (
     <Page
       title="Finanças"
       subtitle="Seu dinheiro sob controle"
       action={
-        <button onClick={() => setOpen(true)} className="shadow-glow flex h-11 items-center gap-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground">
-          <Plus className="h-5 w-5" /> Novo
-        </button>
+        tab !== "metas" ? (
+          <button onClick={() => setOpen(true)} className="shadow-glow flex h-11 items-center gap-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground">
+            <Plus className="h-5 w-5" /> Novo
+          </button>
+        ) : (
+          <button onClick={() => setOpen(true)} className="shadow-glow flex h-11 items-center gap-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground">
+            <Plus className="h-5 w-5" /> Meta
+          </button>
+        )
       }
     >
-      <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
+      <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-4">
         {tabs.map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-lg py-2 text-sm font-semibold ${tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{l}</button>
+          <button key={k} onClick={() => setTab(k)} className={`rounded-lg py-2 text-sm font-semibold ${tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+            {l}
+          </button>
         ))}
       </div>
 
@@ -68,7 +82,7 @@ function Financas() {
                 {byCat.map(([c, v]) => (
                   <div key={c}>
                     <div className="mb-1 flex justify-between text-sm"><span>{c}</span><span className="text-muted-foreground">{brl(v)}</span></div>
-                    <div className="h-2 rounded-full bg-secondary"><div className="h-2 rounded-full bg-primary" style={{ width: `${(v / exp) * 100}%` }} /></div>
+                    <div className="h-2 rounded-full bg-secondary"><div className="h-2 rounded-full bg-primary" style={{ width: `${exp ? (v / exp) * 100 : 0}%` }} /></div>
                   </div>
                 ))}
               </div>
@@ -139,14 +153,197 @@ function Financas() {
         </div>
       )}
 
-      <NewDialog open={open} onOpenChange={setOpen} tab={tab} />
+      {tab === "metas" && (
+        <FinanceGoals />
+      )}
+
+      <NewDialog open={open && tab !== "metas"} onOpenChange={setOpen} tab={tab === "contas" || tab === "dividas" ? tab : "lancamentos"} />
+      <FinanceGoalDialog open={open && tab === "metas"} onOpenChange={setOpen} />
     </Page>
+  );
+}
+
+function FinanceGoals() {
+  const data = useData();
+
+  if (data.financeGoals.length === 0) {
+    return (
+      <Card className="py-8 text-center">
+        <Target className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+        <h2 className="mb-2 font-semibold">Sua primeira meta começa aqui</h2>
+        <p className="text-sm text-muted-foreground">Toque em “Meta” para definir quanto deseja guardar.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {data.financeGoals.map((goal) => {
+        const pct = goal.targetAmount > 0
+          ? Math.min(100, Math.max(0, (goal.currentAmount / goal.targetAmount) * 100))
+          : 0;
+
+        return (
+          <Card key={goal.id}>
+            <div className="mb-3 flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary">
+                <PiggyBank className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="break-words font-semibold">{goal.name}</h2>
+                {goal.deadline && <p className="text-xs text-muted-foreground">Prazo: {fmtDate(goal.deadline)}</p>}
+              </div>
+              <Del onClick={() => update((d) => ({ ...d, financeGoals: d.financeGoals.filter((g) => g.id !== goal.id) }))} />
+            </div>
+
+            <div className="mb-2 flex items-end justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground">Você já guardou</p>
+                <p className="text-lg font-bold">{brl(goal.currentAmount)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Objetivo</p>
+                <p className="font-semibold">{brl(goal.targetAmount)}</p>
+              </div>
+            </div>
+
+            <div className="mb-2 h-3 overflow-hidden rounded-full bg-secondary">
+              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground">
+              <span>{pct.toFixed(0)}% concluído</span>
+              <span>Faltam {brl(Math.max(0, goal.targetAmount - goal.currentAmount))}</span>
+            </div>
+
+            {goal.notes && <p className="mb-3 text-sm text-muted-foreground">{goal.notes}</p>}
+
+            <div className="flex gap-2">
+              <button
+                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground"
+                onClick={() => {
+                  const value = prompt("Quanto você guardou? Digite o valor em reais:");
+                  if (value === null) return;
+                  const amount = Number(value.replace(",", "."));
+                  if (!Number.isFinite(amount) || amount <= 0) {
+                    alert("Digite um valor válido maior que zero.");
+                    return;
+                  }
+                  update((d) => ({
+                    ...d,
+                    financeGoals: d.financeGoals.map((g) =>
+                      g.id === goal.id ? { ...g, currentAmount: g.currentAmount + amount } : g,
+                    ),
+                  }));
+                }}
+              >
+                <Plus className="h-4 w-4" /> Guardar valor
+              </button>
+              <button
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border"
+                aria-label="Corrigir valor guardado"
+                onClick={() => {
+                  const value = prompt("Qual é o valor total que você já guardou?", String(goal.currentAmount).replace(".", ","));
+                  if (value === null) return;
+                  const amount = Number(value.replace(",", "."));
+                  if (!Number.isFinite(amount) || amount < 0) {
+                    alert("Digite um valor válido igual ou maior que zero.");
+                    return;
+                  }
+                  update((d) => ({
+                    ...d,
+                    financeGoals: d.financeGoals.map((g) =>
+                      g.id === goal.id ? { ...g, currentAmount: amount } : g,
+                    ),
+                  }));
+                }}
+              >
+                <TrendingUp className="h-4 w-4" />
+              </button>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+function FinanceGoalDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [name, setName] = useState("");
+  const [target, setTarget] = useState("");
+  const [current, setCurrent] = useState("0");
+  const [deadline, setDeadline] = useState("");
+  const [notes, setNotes] = useState("");
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const targetAmount = Number(target.replace(",", "."));
+    const currentAmount = Number(current.replace(",", "."));
+
+    if (!name.trim() || !Number.isFinite(targetAmount) || targetAmount <= 0 ||
+        !Number.isFinite(currentAmount) || currentAmount < 0) {
+      alert("Preencha o nome e os valores corretamente.");
+      return;
+    }
+
+    update((d) => ({
+      ...d,
+      financeGoals: [
+        ...d.financeGoals,
+        {
+          id: uid(),
+          name: name.trim(),
+          targetAmount,
+          currentAmount,
+          deadline: deadline || undefined,
+          createdAt: today(),
+          notes: notes.trim() || undefined,
+        },
+      ],
+    }));
+
+    setName("");
+    setTarget("");
+    setCurrent("0");
+    setDeadline("");
+    setNotes("");
+    onOpenChange(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[92vw] rounded-2xl sm:max-w-md">
+        <DialogHeader><DialogTitle>Nova meta financeira</DialogTitle></DialogHeader>
+        <form onSubmit={submit} className="space-y-3">
+          <label className="block text-sm">
+            Nome da meta
+            <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Juntar R$ 40.000" className={`${field} mt-1`} />
+          </label>
+          <label className="block text-sm">
+            Quanto deseja juntar? (R$)
+            <input required type="number" min="0.01" step="0.01" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="40000" className={`${field} mt-1`} />
+          </label>
+          <label className="block text-sm">
+            Quanto já tem guardado? (R$)
+            <input required type="number" min="0" step="0.01" value={current} onChange={(e) => setCurrent(e.target.value)} className={`${field} mt-1`} />
+          </label>
+          <label className="block text-sm">
+            Prazo (opcional)
+            <input type="date" min={today()} value={deadline} onChange={(e) => setDeadline(e.target.value)} className={`${field} mt-1`} />
+          </label>
+          <label className="block text-sm">
+            Observações (opcional)
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Por que essa meta é importante?" className={`${field} mt-1 h-20 py-3`} />
+          </label>
+          <button type="submit" className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Salvar meta</button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 function Del({ onClick }: { onClick: () => void }) {
   return (
-    <button aria-label="Excluir" onClick={() => confirm("Excluir este item?") && onClick()} className="text-muted-foreground">
+    <button type="button" aria-label="Excluir" onClick={() => confirm("Excluir este item?") && onClick()} className="text-muted-foreground">
       <Trash2 className="h-4 w-4" />
     </button>
   );
@@ -154,7 +351,8 @@ function Del({ onClick }: { onClick: () => void }) {
 
 function DebtCard({ debt }: { debt: { id: string; name: string; total: number; paid: number } }) {
   const [v, setV] = useState("");
-  const pct = Math.min(100, (debt.paid / debt.total) * 100);
+  const pct = debt.total > 0 ? Math.min(100, (debt.paid / debt.total) * 100) : 0;
+
   return (
     <Card>
       <div className="mb-2 flex items-start justify-between">
@@ -171,10 +369,10 @@ function DebtCard({ debt }: { debt: { id: string; name: string; total: number; p
         onSubmit={(e) => {
           e.preventDefault();
           const n = parseFloat(v.replace(",", "."));
-          if (!n || n <= 0) return;
+          if (!Number.isFinite(n) || n <= 0) return;
           update((d) => ({
             ...d,
-            debts: d.debts.map((y) => (y.id === debt.id ? { ...y, paid: y.paid + n } : y)),
+            debts: d.debts.map((y) => (y.id === debt.id ? { ...y, paid: Math.min(y.total, y.paid + n) } : y)),
             transactions: [...d.transactions, { id: uid(), type: "despesa", description: `Pagamento: ${debt.name}`, amount: n, category: "Dívidas", date: today() }],
           }));
           setV("");
@@ -194,18 +392,22 @@ function NewDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange: (
   const [cat, setCat] = useState<string>("Alimentação");
   const [date, setDate] = useState(today());
 
-  const current = tab === "contas" ? "conta" : tab === "dividas" ? "divida" : kind === "conta" || kind === "divida" ? "despesa" : kind;
+  const current = tab === "contas" ? "conta" : tab === "dividas" ? "divida" : kind;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const n = parseFloat(amount.replace(",", "."));
-    if (!desc.trim() || !n || n <= 0) return;
+    if (!desc.trim() || !Number.isFinite(n) || n <= 0) return;
+
     update((d) => {
       if (current === "conta") return { ...d, bills: [...d.bills, { id: uid(), description: desc.trim(), amount: n, dueDate: date, paid: false }] };
       if (current === "divida") return { ...d, debts: [...d.debts, { id: uid(), name: desc.trim(), total: n, paid: 0 }] };
       return { ...d, transactions: [...d.transactions, { id: uid(), type: current, description: desc.trim(), amount: n, category: cat, date }] };
     });
-    setDesc(""); setAmount(""); setDate(today());
+
+    setDesc("");
+    setAmount("");
+    setDate(today());
     onOpenChange(false);
   }
 
@@ -223,8 +425,8 @@ function NewDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange: (
               ))}
             </div>
           )}
-          <input required value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={current === "divida" ? "Nome (ex: Cartão, Empréstimo)" : "Descrição"} className={field} />
-          <input required inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={current === "divida" ? "Valor total (R$)" : "Valor (R$)"} className={field} />
+          <input required value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={current === "divida" ? "Nome (ex.: Cartão, empréstimo)" : "Descrição"} className={field} />
+          <input required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={current === "divida" ? "Valor total (R$)" : "Valor (R$)"} className={field} />
           {(current === "receita" || current === "despesa") && (
             <select value={cat} onChange={(e) => setCat(e.target.value)} className={field}>
               {CATS.map((c) => <option key={c}>{c}</option>)}
@@ -233,10 +435,10 @@ function NewDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange: (
           {current !== "divida" && (
             <label className="block text-sm text-muted-foreground">
               {current === "conta" ? "Vencimento" : "Data"}
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${field} mt-1`} />
+              <input required type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${field} mt-1`} />
             </label>
           )}
-          <button className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Salvar</button>
+          <button type="submit" className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Salvar</button>
         </form>
       </DialogContent>
     </Dialog>
