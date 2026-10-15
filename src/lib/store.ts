@@ -1,4 +1,3 @@
-
 import { useSyncExternalStore } from "react";
 
 export type Transaction = {
@@ -83,6 +82,7 @@ export type HealthGoal = {
   category: "peso" | "treinos" | "habito" | "outra";
   currentValue: number;
   targetValue: number;
+  startValue?: number;
   unit: string;
   deadline?: string;
   createdAt: string;
