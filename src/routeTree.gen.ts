@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AjustesRouteImport } from './routes/ajustes'
+import { Route as AssistenteRouteImport } from './routes/assistente'
 import { Route as FinancasRouteImport } from './routes/financas'
 import { Route as RotinaRouteImport } from './routes/rotina'
 import { Route as TreinosRouteImport } from './routes/treinos'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const AjustesRoute = AjustesRouteImport.update({
   id: '/ajustes',
   path: '/ajustes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistenteRoute = AssistenteRouteImport.update({
+  id: '/assistente',
+  path: '/assistente',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinancasRoute = FinancasRouteImport.update({
@@ -50,6 +56,7 @@ const ApiChatRoute = ApiChatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ajustes': typeof AjustesRoute
+  '/assistente': typeof AssistenteRoute
   '/financas': typeof FinancasRoute
   '/rotina': typeof RotinaRoute
   '/treinos': typeof TreinosRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ajustes': typeof AjustesRoute
+  '/assistente': typeof AssistenteRoute
   '/financas': typeof FinancasRoute
   '/rotina': typeof RotinaRoute
   '/treinos': typeof TreinosRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ajustes': typeof AjustesRoute
+  '/assistente': typeof AssistenteRoute
   '/financas': typeof FinancasRoute
   '/rotina': typeof RotinaRoute
   '/treinos': typeof TreinosRoute
@@ -75,13 +84,27 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/ajustes' | '/financas' | '/rotina' | '/treinos' | '/api/chat'
+    | '/'
+    | '/ajustes'
+    | '/assistente'
+    | '/financas'
+    | '/rotina'
+    | '/treinos'
+    | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ajustes' | '/financas' | '/rotina' | '/treinos' | '/api/chat'
+  to:
+    | '/'
+    | '/ajustes'
+    | '/assistente'
+    | '/financas'
+    | '/rotina'
+    | '/treinos'
+    | '/api/chat'
   id:
     | '__root__'
     | '/'
     | '/ajustes'
+    | '/assistente'
     | '/financas'
     | '/rotina'
     | '/treinos'
@@ -91,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AjustesRoute: typeof AjustesRoute
+  AssistenteRoute: typeof AssistenteRoute
   FinancasRoute: typeof FinancasRoute
   RotinaRoute: typeof RotinaRoute
   TreinosRoute: typeof TreinosRoute
@@ -111,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/ajustes'
       fullPath: '/ajustes'
       preLoaderRoute: typeof AjustesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistente': {
+      id: '/assistente'
+      path: '/assistente'
+      fullPath: '/assistente'
+      preLoaderRoute: typeof AssistenteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/financas': {
@@ -147,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AjustesRoute: AjustesRoute,
+  AssistenteRoute: AssistenteRoute,
   FinancasRoute: FinancasRoute,
   RotinaRoute: RotinaRoute,
   TreinosRoute: TreinosRoute,
