@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Home, Wallet, ListChecks, Dumbbell, Settings } from "lucide-react";
+import { Home, Wallet, ListChecks, Dumbbell, Settings, Bot } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function Page({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode }) {
@@ -39,6 +39,9 @@ export function BottomNav() {
         </Link>
         <Link to="/treinos" className={item} activeProps={active}>
           <Dumbbell className="h-5 w-5" /> Treinos
+        </Link>
+        <Link to="/assistente" className={item} activeProps={active}>
+          <Bot className="h-5 w-5" /> IA
         </Link>
         <Link to="/ajustes" className={item} activeProps={active}>
           <Settings className="h-5 w-5" /> Ajustes
