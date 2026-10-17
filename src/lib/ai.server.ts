@@ -25,6 +25,8 @@ const exercise = z.object({
   weight: z.number().nullable().describe("Carga em kg ou null"),
 });
 
+const out = z.object({ ok: z.boolean(), message: z.string() });
+
 // Ferramentas sem `execute`: o celular mostra uma confirmação e só então altera os dados locais.
 export const tools = {
   add_transaction: tool({
@@ -36,10 +38,12 @@ export const tools = {
       category: z.string(),
       date,
     }),
+    outputSchema: out,
   }),
   add_bill: tool({
     description: "Cadastrar uma conta a pagar",
     inputSchema: z.object({ description: z.string(), amount: z.number(), dueDate: z.string().describe("AAAA-MM-DD") }),
+    outputSchema: out,
   }),
   add_task: tool({
     description: "Criar uma tarefa na rotina",
@@ -49,16 +53,19 @@ export const tools = {
       time: z.string().nullable().describe("HH:MM ou null"),
       priority: z.enum(["alta", "media", "baixa"]).nullable(),
     }),
+    outputSchema: out,
   }),
   complete_task: tool({
     description: "Marcar uma tarefa existente como concluída (precisa do id dos dados compartilhados)",
     inputSchema: z.object({ taskId: z.string() }),
+    outputSchema: out,
   }),
   delete_task: tool({
     description: "Excluir uma tarefa existente (precisa do id dos dados compartilhados)",
     inputSchema: z.object({ taskId: z.string() }),
+    outputSchema: out,
   }),
-  add_habit: tool({ description: "Criar um novo hábito", inputSchema: z.object({ name: z.string() }) }),
+  add_habit: tool({ description: "Criar um novo hábito", inputSchema: z.object({ name: z.string() }), outputSchema: out }),
   add_finance_goal: tool({
     description: "Criar uma meta financeira",
     inputSchema: z.object({
@@ -67,6 +74,7 @@ export const tools = {
       currentAmount: z.number().nullable(),
       deadline: z.string().nullable().describe("AAAA-MM-DD ou null"),
     }),
+    outputSchema: out,
   }),
   add_health_goal: tool({
     description: "Criar uma meta de saúde (peso, treinos, hábito ou outra)",
@@ -78,18 +86,22 @@ export const tools = {
       unit: z.string(),
       deadline: z.string().nullable(),
     }),
+    outputSchema: out,
   }),
   create_workout_plan: tool({
     description: "Criar um plano de treino com exercícios",
     inputSchema: z.object({ name: z.string(), exercises: z.array(exercise) }),
+    outputSchema: out,
   }),
   add_exercise_to_plan: tool({
     description: "Adicionar exercício a um plano existente (precisa do id do plano)",
     inputSchema: z.object({ planId: z.string(), exercise }),
+    outputSchema: out,
   }),
   log_workout: tool({
     description: "Registrar um treino concluído de um plano existente",
     inputSchema: z.object({ planId: z.string(), date, notes: z.string().nullable() }),
+    outputSchema: out,
   }),
 };
 
@@ -103,7 +115,7 @@ function errorText(error: unknown): string {
 }
 
 export async function handleChat(request: Request): Promise<Response> {
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) return Response.json({ error: "IA não configurada no servidor." }, { status: 500 });
 
   let body: { messages?: UIMessage[]; snapshot?: unknown; today?: string };

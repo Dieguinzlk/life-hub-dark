@@ -128,7 +128,7 @@ export function buildSnapshot(d: AppData) {
     dividas: d.debts.map(({ name, total, paid }) => ({ name, total, paid })),
     tarefasPendentes: d.tasks.filter((t) => !t.done).slice(0, 50).map(({ id, title, date, time, priority }) => ({ id, title, date, time, priority })),
     habitos: d.habits.map((h) => h.name),
-    planos: d.plans.map((p) => ({ id: p.id, name: p.name, exercises: p.exercises.map((e) => `${e.name} ${e.sets}x${e.reps}${e.weight ? ` ${e.weight}kg` : ""}`) })),
+    planos: d.plans.map((p) => ({ id: p.id, name: p.name, exercises: p.exercises.map((e: Exercise) => `${e.name} ${e.sets}x${e.reps}${e.weight ? ` ${e.weight}kg` : ""}`) })),
     treinosRecentes: d.workoutLogs.slice(0, 10).map((l) => ({ planName: l.planName, date: l.date })),
     metaTreinosSemana: d.workoutGoal,
     metasFinanceiras: d.financeGoals.map(({ name, targetAmount, currentAmount, deadline }) => ({ name, targetAmount, currentAmount, deadline })),
