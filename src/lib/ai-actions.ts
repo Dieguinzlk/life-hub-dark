@@ -89,7 +89,7 @@ export function prepareAction(name: string, input: Input, data: AppData): Prepar
       if (list.length === 0) bad("Plano sem exercícios");
       const plan = { id: uid(), name: str(input.name, "Nome do plano"), exercises: list };
       return {
-        summary: `Criar plano "${plan.name}" com: ${list.map((e) => `${e.name} ${e.sets}x${e.reps}`).join(", ")}`,
+        summary: `Criar plano "${plan.name}" com: ${list.map((e: Exercise) => `${e.name} ${e.sets}x${e.reps}`).join(", ")}`,
         apply: () => (update((d) => ({ ...d, plans: [...d.plans, plan] })), "Plano criado"),
       };
     }
