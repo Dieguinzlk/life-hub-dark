@@ -1,6 +1,7 @@
-import { brl, fmtDate, today, uid, update, type AppData, type Exercise } from "@/lib/store";
+import { brl, fmtDate, today, uid, update, type AppData, type Exercise, type Priority } from "@/lib/store";
 
-type Input = Record<string, unknown>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Input = any;
 
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v));
 const dateOr = (v: unknown) => (v == null || v === "" ? today() : isDate(v) ? v : bad("Data inválida"));
@@ -12,7 +13,7 @@ function bad(msg: string): never {
 }
 
 function exerciseOf(v: unknown): Exercise {
-  const e = (v ?? {}) as Input;
+  const e: Input = v ?? {};
   const sets = pos(e.sets, "Séries");
   const reps = pos(e.reps, "Repetições");
   const weight = e.weight == null ? undefined : nonneg(e.weight, "Carga");
@@ -41,7 +42,7 @@ export function prepareAction(name: string, input: Input, data: AppData): Prepar
     }
     case "add_task": {
       const time = typeof input.time === "string" && /^\d{2}:\d{2}$/.test(input.time) ? input.time : undefined;
-      const priority = input.priority === "alta" || input.priority === "media" || input.priority === "baixa" ? input.priority : undefined;
+      const priority = input.priority === "alta" || input.priority === "media" || input.priority === "baixa" ? (input.priority as Priority) : undefined;
       const task = { id: uid(), title: str(input.title, "Título"), done: false, date: dateOr(input.date), ...(time ? { time } : {}), ...(priority ? { priority } : {}) };
       return {
         summary: `Criar tarefa "${task.title}" em ${fmtDate(task.date)}${time ? ` às ${time}` : ""}${priority ? ` (prioridade ${priority})` : ""}`,
