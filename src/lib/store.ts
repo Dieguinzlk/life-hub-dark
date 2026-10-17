@@ -71,9 +71,9 @@ export type FinanceGoal = {
   name: string;
   targetAmount: number;
   currentAmount: number;
-  deadline?: string;
+  deadline?: string | undefined;
   createdAt: string;
-  notes?: string;
+  notes?: string | undefined;
 };
 
 export type HealthGoal = {

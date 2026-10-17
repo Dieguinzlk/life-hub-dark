@@ -1,6 +1,7 @@
-import { brl, fmtDate, today, uid, update, type AppData, type Exercise } from "@/lib/store";
+import { brl, fmtDate, today, uid, update, type AppData, type Exercise, type Priority } from "@/lib/store";
 
-type Input = Record<string, unknown>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Input = any;
 
 const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v));
 const dateOr = (v: unknown) => (v == null || v === "" ? today() : isDate(v) ? v : bad("Data inválida"));
@@ -12,7 +13,7 @@ function bad(msg: string): never {
 }
 
 function exerciseOf(v: unknown): Exercise {
-  const e = (v ?? {}) as Input;
+  const e: Input = v ?? {};
   const sets = pos(e.sets, "Séries");
   const reps = pos(e.reps, "Repetições");
   const weight = e.weight == null ? undefined : nonneg(e.weight, "Carga");
@@ -41,7 +42,7 @@ export function prepareAction(name: string, input: Input, data: AppData): Prepar
     }
     case "add_task": {
       const time = typeof input.time === "string" && /^\d{2}:\d{2}$/.test(input.time) ? input.time : undefined;
-      const priority = input.priority === "alta" || input.priority === "media" || input.priority === "baixa" ? input.priority : undefined;
+      const priority = input.priority === "alta" || input.priority === "media" || input.priority === "baixa" ? (input.priority as Priority) : undefined;
       const task = { id: uid(), title: str(input.title, "Título"), done: false, date: dateOr(input.date), ...(time ? { time } : {}), ...(priority ? { priority } : {}) };
       return {
         summary: `Criar tarefa "${task.title}" em ${fmtDate(task.date)}${time ? ` às ${time}` : ""}${priority ? ` (prioridade ${priority})` : ""}`,
@@ -88,7 +89,7 @@ export function prepareAction(name: string, input: Input, data: AppData): Prepar
       if (list.length === 0) bad("Plano sem exercícios");
       const plan = { id: uid(), name: str(input.name, "Nome do plano"), exercises: list };
       return {
-        summary: `Criar plano "${plan.name}" com: ${list.map((e) => `${e.name} ${e.sets}x${e.reps}`).join(", ")}`,
+        summary: `Criar plano "${plan.name}" com: ${list.map((e: Exercise) => `${e.name} ${e.sets}x${e.reps}`).join(", ")}`,
         apply: () => (update((d) => ({ ...d, plans: [...d.plans, plan] })), "Plano criado"),
       };
     }
@@ -127,7 +128,7 @@ export function buildSnapshot(d: AppData) {
     dividas: d.debts.map(({ name, total, paid }) => ({ name, total, paid })),
     tarefasPendentes: d.tasks.filter((t) => !t.done).slice(0, 50).map(({ id, title, date, time, priority }) => ({ id, title, date, time, priority })),
     habitos: d.habits.map((h) => h.name),
-    planos: d.plans.map((p) => ({ id: p.id, name: p.name, exercises: p.exercises.map((e) => `${e.name} ${e.sets}x${e.reps}${e.weight ? ` ${e.weight}kg` : ""}`) })),
+    planos: d.plans.map((p) => ({ id: p.id, name: p.name, exercises: p.exercises.map((e: Exercise) => `${e.name} ${e.sets}x${e.reps}${e.weight ? ` ${e.weight}kg` : ""}`) })),
     treinosRecentes: d.workoutLogs.slice(0, 10).map((l) => ({ planName: l.planName, date: l.date })),
     metaTreinosSemana: d.workoutGoal,
     metasFinanceiras: d.financeGoals.map(({ name, targetAmount, currentAmount, deadline }) => ({ name, targetAmount, currentAmount, deadline })),

@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - App data lives in localStorage via src/lib/store.ts (single JSON blob, versioned) — user wants on-device storage with JSON backup/restore, no backend.
+- AI assistant: server route /api/chat (src/lib/ai.server.ts) streams Lovable AI with tools that have no server execute; the browser confirms each action and applies it to localStorage via src/lib/ai-actions.ts — keeps data on-device and every change user-approved.
