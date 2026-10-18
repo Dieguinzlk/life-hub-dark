@@ -1,4 +1,4 @@
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import {
   APICallError,
   convertToModelMessages,
@@ -27,8 +27,6 @@ const out = z.object({
   message: z.string(),
 });
 
-// As ferramentas não executam ações automaticamente no servidor.
-// A interface continua responsável por pedir confirmação ao usuário.
 export const tools = {
   add_transaction: tool({
     description: "Registrar uma receita ou despesa",
@@ -171,11 +169,13 @@ function errorText(error: unknown): string {
 export async function handleChat(
   request: Request,
 ): Promise<Response> {
-  const apiKey = process.env["GEMINI_API_KEY"];
+  const apiKey =
+    process.env["GEMINI_API_KEY"] ||
+    process.env["GOOGLE_GENERATIVE_AI_API_KEY"];
 
   if (!apiKey) {
     console.error(
-      "GEMINI_API_KEY não está configurada no servidor.",
+      "Nenhuma chave do Gemini (GEMINI_API_KEY ou GOOGLE_GENERATIVE_AI_API_KEY) está configurada no servidor.",
     );
 
     return Response.json(
@@ -183,6 +183,11 @@ export async function handleChat(
       { status: 500 },
     );
   }
+
+  // Instancia o provedor do Google passando a chave explicitamente
+  const googleProvider = createGoogleGenerativeAI({
+    apiKey,
+  });
 
   let body: {
     messages?: UIMessage[];
@@ -215,12 +220,11 @@ export async function handleChat(
       ? body.today.slice(0, 10)
       : new Date().toISOString().slice(0, 10);
 
-  // Só utiliza os dados locais se o frontend os enviar com consentimento.
   const snapshot = body.snapshot
     ? JSON.stringify(body.snapshot).slice(0, 20000)
     : null;
 
-  const instructions = [
+  const systemInstructions = [
     "Você é o assistente do app Gerenciador de Vida.",
     "Responda sempre em português do Brasil, de forma clara, curta e prática.",
     "Ajude com rotina, tarefas, finanças em reais (BRL), hábitos, metas e treinos.",
@@ -235,8 +239,8 @@ export async function handleChat(
 
   try {
     const result = streamText({
-      model: google(MODEL),
-      instructions,
+      model: googleProvider(MODEL),
+      system: systemInstructions,
       messages: await convertToModelMessages(messages),
       tools,
       abortSignal: request.signal,
