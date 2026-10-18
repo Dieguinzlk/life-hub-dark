@@ -20,7 +20,6 @@ export const Route = createFileRoute("/")({
 
 export function HomeDashboard() {
   const data = useData();
-  const [activeTab, setActiveTab] = useState<"overview" | "transactions">("overview");
   const refMonth = today().slice(0, 7);
 
   // Finanças do mês atual
@@ -43,7 +42,7 @@ export function HomeDashboard() {
         const exists = h.doneDates.includes(todayStr);
         return {
           ...h,
-          doneDates: exists ? h.doneDates.filter((date) => date !== todayStr) : [...h.doneDates, todayStr],
+          doneDates: exists ? h.doneDates.filter((date: string) => date !== todayStr) : [...h.doneDates, todayStr],
         };
       }),
     }));
@@ -107,7 +106,7 @@ export function HomeDashboard() {
         </div>
       </section>
 
-      {/* 3. Card do Assistente de IA (Estilo Premium) */}
+      {/* 3. Card do Assistente de IA */}
       <section className="rounded-3xl bg-gradient-to-r from-emerald-950/40 via-[#10141D] to-[#121622] p-5 border border-emerald-500/30 shadow-lg space-y-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-3xl pointer-events-none" />
         
@@ -162,7 +161,7 @@ export function HomeDashboard() {
 
         {/* Lista interativa rápida de hábitos */}
         <div className="space-y-2">
-          {habits.slice(0, 3).map((h) => {
+          {habits.slice(0, 3).map((h: any) => {
             const isDone = h.doneDates.includes(todayStr);
             return (
               <div
@@ -204,7 +203,7 @@ export function HomeDashboard() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {contasPendentes.map((conta) => (
+            {contasPendentes.map((conta: any) => (
               <div key={conta.id} className="bg-[#12141D] rounded-3xl p-4 border border-white/5 space-y-2">
                 <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
                   <Flame className="h-4 w-4" />
