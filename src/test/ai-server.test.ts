@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  google: vi.fn(() => ({ provider: "google", modelId: "gemini-2.5-flash" })),
+  google: vi.fn(() => ({ provider: "google", modelId: "gemini-2.0-flash" })),
   createGoogle: vi.fn(),
   streamText: vi.fn(),
 }));
