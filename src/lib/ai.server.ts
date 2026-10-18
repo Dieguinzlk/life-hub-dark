@@ -1,21 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { APICallError, convertToModelMessages, streamText, tool, type UIMessage } from "ai";
 import { z } from "zod";
-
-const GATEWAY = "https://ai.gateway.lovable.dev/v1";
-const MODEL = "openai/gpt-6-astra";
-const RUN_ID = "X-Lovable-AIG-Run-ID";
-
-function runIdFetch(initial?: string | null) {
-  let runId = initial?.trim() || undefined;
-  return async (input: RequestInfo | URL, init?: RequestInit) => {
-    const headers = new Headers(init?.headers);
-    if (runId && !headers.has(RUN_ID)) headers.set(RUN_ID, runId);
-    const res = await fetch(input, { ...init, headers });
-    runId ??= res.headers.get(RUN_ID)?.trim() || undefined;
-    return res;
-  };
-}
 
 const date = z.string().nullable().describe("Data no formato AAAA-MM-DD, ou null para hoje");
 const exercise = z.object({
@@ -108,15 +93,16 @@ export const tools = {
 function errorText(error: unknown): string {
   const status = APICallError.isInstance(error) ? error.statusCode : undefined;
   if (status === 429) return "Limite de uso atingido no momento. Aguarde alguns instantes e tente de novo.";
-  if (status === 402) return "Os créditos gratuitos de IA do mês acabaram. É possível adicionar créditos nas configurações do workspace Lovable.";
-  if (status === 401 || status === 403) return "A IA não está liberada para este app (configuração do servidor).";
-  console.error("AI error", error);
+  if (status === 401 || status === 403) return "O Gemini recusou o acesso. Verifique a chave e as permissões no servidor.";
+  if (status === 400) return "O Gemini não aceitou a solicitação. Verifique o modelo configurado no servidor.";
   return "Não foi possível falar com a IA agora. Verifique a conexão e tente de novo.";
 }
 
 export async function handleChat(request: Request): Promise<Response> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
-  if (!apiKey) return Response.json({ error: "IA não configurada no servidor." }, { status: 500 });
+  const apiKey = process.env["GEMINI_API_KEY"];
+  if (!apiKey) return Response.json({ error: "IA não configurada. Adicione GEMINI_API_KEY nas variáveis de ambiente do servidor." }, { status: 500 });
+  const google = createGoogleGenerativeAI({ apiKey });
+  const model = process.env["GEMINI_MODEL"] || "gemini-2.5-flash";
 
   let body: { messages?: UIMessage[]; snapshot?: unknown; today?: string };
   try {
@@ -141,29 +127,17 @@ export async function handleChat(request: Request): Promise<Response> {
       : "O usuário NÃO compartilhou seus dados. Você não conhece tarefas, planos ou lançamentos existentes; para ações que precisam de um id existente, peça para ativar 'Compartilhar meus dados'.",
   ].join("\n");
 
-  const provider = createOpenAI({
-    baseURL: GATEWAY,
-    apiKey,
-    headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-    fetch: runIdFetch(request.headers.get(RUN_ID)),
-  });
-
+  try {
   const result = streamText({
-    model: provider.responses(MODEL),
+    model: google(model),
     instructions,
     messages: await convertToModelMessages(messages),
     tools,
     abortSignal: request.signal,
-    providerOptions: {
-      openai: {
-        forceReasoning: true,
-        reasoningEffort: "low",
-        reasoningSummary: "auto",
-        store: false,
-        include: ["reasoning.encrypted_content"],
-      },
-    },
   });
 
   return result.toUIMessageStreamResponse({ originalMessages: messages, onError: errorText });
+  } catch (error) {
+    return Response.json({ error: errorText(error) }, { status: 502 });
+  }
 }
