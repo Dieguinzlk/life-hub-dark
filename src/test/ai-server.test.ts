@@ -36,7 +36,7 @@ describe("Gemini server configuration", () => {
     expect(mocks.createGoogle).not.toHaveBeenCalled();
   });
 
-  it("passes the server key explicitly and selects gemini-2.5-flash by default", async () => {
+  it("passes the server key explicitly and selects gemini-2.0-flash by default", async () => {
     vi.stubEnv("GEMINI_API_KEY", "test-only-not-a-credential");
     vi.stubEnv("GEMINI_MODEL", "");
     mocks.createGoogle.mockReturnValue(mocks.google);
