@@ -8,7 +8,7 @@ import {
 } from "ai";
 import { z } from "zod";
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-3.8-flash";
 
 const date = z
   .string()
