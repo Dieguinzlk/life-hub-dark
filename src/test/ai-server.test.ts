@@ -43,7 +43,7 @@ describe("Gemini server configuration", () => {
     mocks.streamText.mockReturnValue({ toUIMessageStreamResponse: () => new Response("test") });
     const response = await handleChat(request());
     expect(mocks.createGoogle).toHaveBeenCalledWith({ apiKey: "test-only-not-a-credential" });
-    expect(mocks.google).toHaveBeenCalledWith("gemini-2.5-flash");
+    expect(mocks.google).toHaveBeenCalledWith("gemini-2.0-flash");
     expect(response.status).toBe(200);
   });
 });
