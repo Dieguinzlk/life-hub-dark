@@ -108,7 +108,7 @@ export async function handleChat(request: Request): Promise<Response> {
   }
 
   const google = createGoogleGenerativeAI({ apiKey });
-  const model = "gemini-1.5-flash";
+  const model = "gemini-2.5-flash";
 
   let body: { messages?: UIMessage[]; snapshot?: unknown; today?: string };
   try {
