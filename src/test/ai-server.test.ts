@@ -31,7 +31,8 @@ describe("Gemini server configuration", () => {
   it("rejects missing GEMINI_API_KEY without contacting the provider", async () => {
     vi.stubEnv("GEMINI_API_KEY", "");
     const response = await handleChat(request());
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "AI_NOT_CONFIGURED" });
     expect(mocks.createGoogle).not.toHaveBeenCalled();
   });
 

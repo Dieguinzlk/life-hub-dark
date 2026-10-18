@@ -36,6 +36,17 @@ function Assistente() {
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
+        fetch: async (url, options) => {
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            const body: unknown = await response.json().catch(() => null);
+            const message = body && typeof body === "object" && "error" in body && typeof body.error === "string"
+              ? body.error
+              : "Não foi possível falar com a IA agora. Tente novamente.";
+            throw new Error(message);
+          }
+          return response;
+        },
         prepareSendMessagesRequest: ({ messages }) => ({
           body: { messages, today: today(), snapshot: shareRef.current ? buildSnapshot(dataRef.current) : null },
         }),
@@ -69,7 +80,7 @@ function Assistente() {
   return (
     <Page
       title="Assistente"
-      subtitle="Lovable AI · em português"
+      subtitle="Gemini · em português"
       action={
         messages.length > 0 ? (
           <button onClick={() => { stop(); setMessages([]); setError(null); }} className="flex items-center gap-1 rounded-xl border px-3 py-2 text-sm text-muted-foreground">
