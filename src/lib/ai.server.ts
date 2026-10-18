@@ -102,7 +102,7 @@ export async function handleChat(request: Request): Promise<Response> {
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) return Response.json({ code: "AI_NOT_CONFIGURED", error: "O Gemini ainda não está configurado neste ambiente. Configure GEMINI_API_KEY no servidor e tente novamente." }, { status: 409 });
   const google = createGoogleGenerativeAI({ apiKey });
-  const model = process.env["GEMINI_MODEL"] || "gemini-2.5-flash";
+  const model = process.env["GEMINI_MODEL"] || "gemini-2.0-flash";
 
   let body: { messages?: UIMessage[]; snapshot?: unknown; today?: string };
   try {

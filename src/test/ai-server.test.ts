@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  google: vi.fn(() => ({ provider: "google", modelId: "gemini-2.5-flash" })),
+  google: vi.fn(() => ({ provider: "google", modelId: "gemini-2.0-flash" })),
   createGoogle: vi.fn(),
   streamText: vi.fn(),
 }));
@@ -36,14 +36,14 @@ describe("Gemini server configuration", () => {
     expect(mocks.createGoogle).not.toHaveBeenCalled();
   });
 
-  it("passes the server key explicitly and selects gemini-2.5-flash by default", async () => {
+  it("passes the server key explicitly and selects gemini-2.0-flash by default", async () => {
     vi.stubEnv("GEMINI_API_KEY", "test-only-not-a-credential");
     vi.stubEnv("GEMINI_MODEL", "");
     mocks.createGoogle.mockReturnValue(mocks.google);
     mocks.streamText.mockReturnValue({ toUIMessageStreamResponse: () => new Response("test") });
     const response = await handleChat(request());
     expect(mocks.createGoogle).toHaveBeenCalledWith({ apiKey: "test-only-not-a-credential" });
-    expect(mocks.google).toHaveBeenCalledWith("gemini-2.5-flash");
+    expect(mocks.google).toHaveBeenCalledWith("gemini-2.0-flash");
     expect(response.status).toBe(200);
   });
 });
