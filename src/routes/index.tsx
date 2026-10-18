@@ -1,18 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { 
   Sparkles, 
   ChevronRight, 
-  ArrowUpRight, 
   Bell, 
   Flame, 
-  Wallet, 
   TrendingDown, 
   TrendingUp,
-  CreditCard
+  Wallet,
+  CheckCircle2,
+  Circle,
+  ArrowRight
 } from "lucide-react";
-import { useData, today, brl } from "@/lib/store";
+import { useData, today, brl, update } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
   component: HomeDashboard,
@@ -20,30 +20,36 @@ export const Route = createFileRoute("/")({
 
 export function HomeDashboard() {
   const data = useData();
-  const [activeTab, setActiveTab] = useState<"categories" | "transactions">("categories");
+  const [activeTab, setActiveTab] = useState<"overview" | "transactions">("overview");
   const refMonth = today().slice(0, 7);
 
-  // Dados financeiros do mês
+  // Finanças do mês atual
   const monthTx = data.transactions.filter((t) => t.date.startsWith(refMonth));
   const receitas = monthTx.filter((t) => t.type === "receita").reduce((acc, t) => acc + t.amount, 0);
   const despesas = monthTx.filter((t) => t.type === "despesa").reduce((acc, t) => acc + t.amount, 0);
   const saldoTotal = receitas - despesas;
 
-  // Agrupamento por Categoria para o Gráfico Donut
-  const categoriesMap = monthTx
-    .filter((t) => t.type === "despesa")
-    .reduce<Record<string, number>>((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
-      return acc;
-    }, {});
+  // Hábitos do dia
+  const todayStr = today();
+  const habits = data.habits || [];
+  const habitsDoneToday = habits.filter((h) => h.doneDates.includes(todayStr)).length;
+  const habitScore = habits.length > 0 ? Math.round((habitsDoneToday / habits.length) * 10) : 0;
 
-  const pieData = Object.entries(categoriesMap).map(([name, value]) => ({
-    name,
-    value,
-  }));
+  const toggleHabitToday = (habitId: string) => {
+    update((d) => ({
+      ...d,
+      habits: d.habits.map((h) => {
+        if (h.id !== habitId) return h;
+        const exists = h.doneDates.includes(todayStr);
+        return {
+          ...h,
+          doneDates: exists ? h.doneDates.filter((date) => date !== todayStr) : [...h.doneDates, todayStr],
+        };
+      }),
+    }));
+  };
 
-  const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EC4899", "#8B5CF6"];
-
+  // Contas pendentes
   const contasPendentes = data.bills.filter((b) => !b.paid).slice(0, 2);
 
   return (
@@ -67,157 +73,152 @@ export function HomeDashboard() {
         </button>
       </header>
 
-      {/* 2. Seção de Saldo e Visão Geral (Estilo Card Flutuante) */}
-      <section className="space-y-4">
-        <div>
-          <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Seu Orçamento</span>
-          <div className="flex items-baseline gap-2 mt-0.5">
-            <h2 className="text-3xl font-black text-white tracking-tight">{brl(saldoTotal)}</h2>
-            <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              BRL
-            </span>
+      {/* 2. Banner Principal: Orçamento e Balanço */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#141824] to-[#0D0F17] p-5 border border-white/10 shadow-2xl space-y-5">
+        <div className="flex justify-between items-start">
+          <div>
+            <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Saldo Atual do Mês</span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-3xl font-extrabold text-white tracking-tight">{brl(saldoTotal)}</span>
+            </div>
+          </div>
+          <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <Wallet className="h-5 w-5" />
           </div>
         </div>
 
-        {/* 2 Cards de Indicadores Curvos estilo Dribbble */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[#12141D] rounded-3xl p-4 border border-white/5 space-y-3 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <TrendingUp className="h-4 w-4" />
-              </div>
-              <span className="text-xs font-bold text-emerald-400">+12%</span>
+        {/* Grid de Balanço Rápido */}
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="bg-[#1A1D2B]/80 rounded-2xl p-3.5 border border-white/5">
+            <div className="flex items-center gap-2 text-slate-400 mb-1">
+              <TrendingUp className="h-4 w-4 text-emerald-400" />
+              <span className="text-xs font-medium">Receitas</span>
             </div>
-            <div>
-              <p className="text-[11px] text-slate-400 font-medium">Receita Líquida</p>
-              <p className="text-lg font-bold text-white mt-0.5">{brl(receitas)}</p>
-            </div>
+            <p className="text-lg font-bold text-white">{brl(receitas)}</p>
           </div>
 
-          <div className="bg-[#12141D] rounded-3xl p-4 border border-white/5 space-y-3 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div className="h-9 w-9 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-                <TrendingDown className="h-4 w-4" />
-              </div>
-              <span className="text-xs font-bold text-rose-400">-5%</span>
+          <div className="bg-[#1A1D2B]/80 rounded-2xl p-3.5 border border-white/5">
+            <div className="flex items-center gap-2 text-slate-400 mb-1">
+              <TrendingDown className="h-4 w-4 text-rose-400" />
+              <span className="text-xs font-medium">Despesas</span>
             </div>
-            <div>
-              <p className="text-[11px] text-slate-400 font-medium">Gastos Planejados</p>
-              <p className="text-lg font-bold text-white mt-0.5">{brl(despesas)}</p>
-            </div>
+            <p className="text-lg font-bold text-rose-400">{brl(despesas)}</p>
           </div>
         </div>
       </section>
 
-      {/* 3. Gráfico Donut de Despesas Planejadas (Gráfico de Rosca Neumorphic) */}
-      <section className="bg-[#12141D] rounded-3xl p-5 border border-white/5 space-y-4">
+      {/* 3. Card do Assistente de IA (Estilo Premium) */}
+      <section className="rounded-3xl bg-gradient-to-r from-emerald-950/40 via-[#10141D] to-[#121622] p-5 border border-emerald-500/30 shadow-lg space-y-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-3xl pointer-events-none" />
+        
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-white">Distribuição de Gastos</h3>
-          
-          {/* Toggle de Abas Categorias / Transações */}
-          <div className="flex bg-[#0A0B10] p-1 rounded-xl border border-white/5">
-            <button
-              onClick={() => setActiveTab("categories")}
-              className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition ${
-                activeTab === "categories" ? "bg-[#1E2230] text-emerald-400" : "text-slate-400"
-              }`}
-            >
-              Categorias
-            </button>
-            <button
-              onClick={() => setActiveTab("transactions")}
-              className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition ${
-                activeTab === "transactions" ? "bg-[#1E2230] text-emerald-400" : "text-slate-400"
-              }`}
-            >
-              Lançamentos
-            </button>
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-xl bg-emerald-500 flex items-center justify-center text-slate-950 shadow-md shadow-emerald-500/20">
+              <Sparkles className="h-4 w-4 fill-slate-950" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">Assistente Pessoal</h2>
+              <p className="text-[10px] uppercase font-bold tracking-wider text-emerald-400">IA · Inteligência do seu dia</p>
+            </div>
           </div>
         </div>
 
-        {activeTab === "categories" ? (
-          <div className="flex items-center justify-between gap-4 py-2">
-            {/* Gráfico Donut */}
-            <div className="h-32 w-32 relative flex items-center justify-center shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData.length > 0 ? pieData : [{ name: "Livre", value: 1 }]}
-                    innerRadius={38}
-                    outerRadius={55}
-                    paddingAngle={4}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {pieData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-[10px] text-slate-400 font-medium">Total</span>
-                <span className="text-xs font-bold text-white">{brl(despesas)}</span>
-              </div>
-            </div>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Pronto para organizar suas finanças ou planejar suas metas? Converse com o Gemini agora.
+        </p>
 
-            {/* Legenda de Categorias */}
-            <div className="flex-1 space-y-2">
-              {pieData.slice(0, 3).map((item, index) => (
-                <div key={item.name} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 truncate">
-                    <div 
-                      className="h-2 w-2 rounded-full shrink-0" 
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }} 
-                    />
-                    <span className="text-slate-300 truncate">{item.name}</span>
-                  </div>
-                  <span className="font-bold text-white shrink-0">{brl(item.value)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2 pt-1">
-            {monthTx.slice(0, 3).map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between p-2.5 rounded-xl bg-[#0A0B10] border border-white/5 text-xs">
-                <div>
-                  <p className="font-semibold text-white">{tx.description}</p>
-                  <p className="text-[10px] text-slate-400">{tx.category} · {tx.date}</p>
-                </div>
-                <span className={`font-bold ${tx.type === "receita" ? "text-emerald-400" : "text-rose-400"}`}>
-                  {tx.type === "receita" ? "+" : "-"}{brl(tx.amount)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        <Link 
+          to="/assistente" 
+          className="flex items-center justify-between w-full bg-[#171B26] hover:bg-[#1E2332] text-xs font-bold text-emerald-400 p-3 rounded-2xl border border-emerald-500/20 transition group"
+        >
+          <span>Abrir Assistente Inteligente</span>
+          <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition" />
+        </Link>
       </section>
 
-      {/* 4. Próximos Pagamentos (Bento Grid Style) */}
+      {/* 4. Rotina & Hábitos do Dia */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-white">Próximos Vencimentos</h3>
-          <Link to="/financas" className="text-xs text-emerald-400 font-medium flex items-center gap-0.5">
-            Ver tudo <ChevronRight className="h-3.5 w-3.5" />
+          <h3 className="text-sm font-bold text-white">Hábitos de Hoje</h3>
+          <Link to="/rotina" className="text-xs text-emerald-400 font-medium flex items-center gap-0.5">
+            Gerenciar rotina <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          {contasPendentes.map((conta) => (
-            <div key={conta.id} className="bg-[#12141D] rounded-3xl p-4 border border-white/5 space-y-2 relative">
-              <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                <Flame className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-slate-300 truncate">{conta.description}</p>
-                <p className="text-base font-extrabold text-white mt-0.5">{brl(conta.amount)}</p>
-              </div>
-              <p className="text-[10px] font-semibold text-amber-400">Vence: {conta.dueDate}</p>
+        {/* Card de Score Diário */}
+        <div className="rounded-3xl bg-[#12141D] p-4 border border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 flex items-center justify-center bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400 font-extrabold text-base">
+              {habitScore}
             </div>
-          ))}
+            <div>
+              <h4 className="text-sm font-bold text-white">Score de Produtividade</h4>
+              <p className="text-xs text-emerald-400 font-medium">
+                {habitsDoneToday} de {habits.length} concluídos
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Lista interativa rápida de hábitos */}
+        <div className="space-y-2">
+          {habits.slice(0, 3).map((h) => {
+            const isDone = h.doneDates.includes(todayStr);
+            return (
+              <div
+                key={h.id}
+                onClick={() => toggleHabitToday(h.id)}
+                className={`flex items-center justify-between p-3.5 rounded-2xl border transition cursor-pointer ${
+                  isDone 
+                    ? "bg-[#10151E] border-emerald-500/30 text-slate-300" 
+                    : "bg-[#12141D] border-white/5 text-slate-400"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {isDone ? (
+                    <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+                  ) : (
+                    <Circle className="h-5 w-5 text-slate-600 shrink-0" />
+                  )}
+                  <span className={`text-xs font-semibold ${isDone ? "line-through text-slate-500" : "text-white"}`}>
+                    {h.name}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-[#1A1D2B] px-2 py-0.5 rounded-md text-slate-400">
+                  Hábito
+                </span>
+              </div>
+            );
+          })}
         </div>
       </section>
+
+      {/* 5. Próximos Vencimentos */}
+      {contasPendentes.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white">Próximas Contas</h3>
+            <Link to="/financas" className="text-xs text-emerald-400 font-medium flex items-center gap-0.5">
+              Ver finanças <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {contasPendentes.map((conta) => (
+              <div key={conta.id} className="bg-[#12141D] rounded-3xl p-4 border border-white/5 space-y-2">
+                <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <Flame className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-300 truncate">{conta.description}</p>
+                  <p className="text-base font-extrabold text-white mt-0.5">{brl(conta.amount)}</p>
+                </div>
+                <p className="text-[10px] font-semibold text-amber-400">Vence: {conta.dueDate}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
     </div>
   );
