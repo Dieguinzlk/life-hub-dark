@@ -217,7 +217,7 @@ function Index() {
                     ...d,
                     tasks: d.tasks.map((y) =>
                       y.id === x.id
-                        ? { ...y, done: !y.done, date: t }
+                        ? { ...y, done: !y.done }
                         : y
                     ),
                   }))

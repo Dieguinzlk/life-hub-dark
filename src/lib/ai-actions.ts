@@ -1,9 +1,10 @@
 import { brl, fmtDate, today, uid, update, type AppData, type Exercise, type Priority } from "@/lib/store";
+import { validDate } from "@/lib/data-validation";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Input = any;
 
-const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v));
+const isDate = (v: unknown): v is string => validDate.safeParse(v).success;
 const dateOr = (v: unknown) => (v == null || v === "" ? today() : isDate(v) ? v : bad("Data inválida"));
 const str = (v: unknown, label: string) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 200) : bad(`${label} vazio`));
 const pos = (v: unknown, label: string) => (typeof v === "number" && isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : bad(`${label} deve ser maior que zero`));
@@ -16,6 +17,7 @@ function exerciseOf(v: unknown): Exercise {
   const e: Input = v ?? {};
   const sets = pos(e.sets, "Séries");
   const reps = pos(e.reps, "Repetições");
+  if (!Number.isInteger(sets) || !Number.isInteger(reps)) bad("Séries e repetições devem ser inteiros positivos");
   const weight = e.weight == null ? undefined : nonneg(e.weight, "Carga");
   return { id: uid(), name: str(e.name, "Nome do exercício"), sets: Math.round(sets), reps: Math.round(reps), ...(weight ? { weight } : {}) };
 }
@@ -41,7 +43,7 @@ export function prepareAction(name: string, input: Input, data: AppData): Prepar
       };
     }
     case "add_task": {
-      const time = typeof input.time === "string" && /^\d{2}:\d{2}$/.test(input.time) ? input.time : undefined;
+      const time = input.time == null ? undefined : typeof input.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) ? input.time : bad("Horário inválido");
       const priority = input.priority === "alta" || input.priority === "media" || input.priority === "baixa" ? (input.priority as Priority) : undefined;
       const task = { id: uid(), title: str(input.title, "Título"), done: false, date: dateOr(input.date), ...(time ? { time } : {}), ...(priority ? { priority } : {}) };
       return {

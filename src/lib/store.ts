@@ -230,6 +230,7 @@ export const fmtDate = (value: string) => {
 
 export function exportBackup() {
   load();
+  if (loadFailed) throw new Error("Não é possível exportar: os dados locais não puderam ser lidos.");
 
   const blob = new Blob([JSON.stringify(state, null, 2)], {
     type: "application/json",
