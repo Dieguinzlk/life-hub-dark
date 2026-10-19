@@ -1,7 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { Home, Wallet, ListChecks, Dumbbell, Target, Sparkles } from "lucide-react";
+import { Home, Wallet, ListChecks, Dumbbell, Target, Sparkles, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useData } from "@/lib/store";
+import {
+  registerServiceWorker,
+  requestNotificationPermission,
+  checkAndNotifyDueItems,
+} from "@/lib/notifications";
 
 export function Page({
   title,
@@ -14,6 +20,29 @@ export function Page({
   action?: ReactNode;
   children: ReactNode;
 }) {
+  const data = useData();
+  const [permission, setPermission] = useState<NotificationPermission>("default");
+
+  useEffect(() => {
+    // Regista o Service Worker e verifica o estado das permissões ao carregar
+    void registerServiceWorker();
+
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPermission(Notification.permission);
+      if (Notification.permission === "granted") {
+        checkAndNotifyDueItems(data);
+      }
+    }
+  }, [data]);
+
+  const handleEnableNotifications = async () => {
+    const res = await requestNotificationPermission();
+    setPermission(res);
+    if (res === "granted") {
+      checkAndNotifyDueItems(data);
+    }
+  };
+
   return (
     <div className="mx-auto min-h-screen max-w-md px-4 pb-28 pt-6">
       <header className="mb-5 flex items-end justify-between gap-3">
@@ -21,7 +50,20 @@ export function Page({
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         </div>
-        {action}
+        <div className="flex items-center gap-2">
+          {permission !== "granted" && (
+            <Button
+              onClick={handleEnableNotifications}
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 rounded-xl"
+              title="Ativar Notificações"
+            >
+              <Bell className="h-4 w-4 text-primary" />
+            </Button>
+          )}
+          {action}
+        </div>
       </header>
       {children}
     </div>
