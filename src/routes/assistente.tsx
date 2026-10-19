@@ -15,6 +15,8 @@ export const Route = createFileRoute("/assistente")({
       { name: "description", content: "Converse em português e organize finanças, rotina, treinos e metas." },
       { property: "og:title", content: "Assistente de IA — Gerenciador de Vida" },
       { property: "og:description", content: "Converse e execute ações nos seus módulos com confirmação." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Assistente,
@@ -120,7 +122,7 @@ function Assistente() {
 
       <form
         onSubmit={(e) => { e.preventDefault(); submit(); }}
-        className="fixed inset-x-0 bottom-[64px] z-30 border-t bg-background/95 px-4 py-2 backdrop-blur"
+        className="chat-composer fixed inset-x-0 z-30 border-t bg-background/95 px-4 py-2 backdrop-blur"
       >
         <div className="mx-auto flex max-w-md items-end gap-2">
           <textarea

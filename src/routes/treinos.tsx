@@ -12,6 +12,10 @@ export const Route = createFileRoute("/treinos")({
     meta: [
       { title: "Treinos — Gerenciador de Vida" },
       { name: "description", content: "Planos, calendário de treinos, histórico e metas." },
+      { property: "og:title", content: "Treinos — Gerenciador de Vida" },
+      { property: "og:description", content: "Seus planos, histórico de treinos e metas de evolução." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Treinos,

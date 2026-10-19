@@ -12,6 +12,8 @@ export const Route = createFileRoute("/rotina")({
       { name: "description", content: "Organize suas tarefas do dia e da semana com horário e prioridade." },
       { property: "og:title", content: "Rotina — Gerenciador de Vida" },
       { property: "og:description", content: "Tarefas do dia e da semana, com horário e prioridade." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Rotina,

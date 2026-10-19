@@ -1,7 +1,10 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Trash2, Check, Target, PiggyBank, TrendingUp } from "lucide-react";
+import { Plus, Trash2, Check, Target, PiggyBank, TrendingUp, Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { money, roundMoney } from "@/lib/data-validation";
+import type { FinanceGoal } from "@/lib/store";
 import { Page, Card } from "@/components/AppShell";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useData, update, uid, today, brl, fmtDate } from "@/lib/store";
@@ -13,6 +16,8 @@ export const Route = createFileRoute("/financas")({
       { name: "description", content: "Controle receitas, despesas, contas, dívidas e metas financeiras." },
       { property: "og:title", content: "Finanças — Gerenciador de Vida" },
       { property: "og:description", content: "Controle suas finanças e acompanhe suas metas." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Financas,
@@ -22,9 +27,9 @@ type Tab = "lancamentos" | "contas" | "dividas" | "metas";
 const CATS = ["Alimentação", "Moradia", "Transporte", "Saúde", "Lazer", "Educação", "Salário", "Outros"];
 const field = "h-12 w-full rounded-xl border bg-input/40 px-3 text-base outline-none focus:border-primary";
 
-function Financas() {
+export function Financas({ initialTab = "lancamentos", goalsPage = false }: { initialTab?: Tab; goalsPage?: boolean }) {
   const data = useData();
-  const [tab, setTab] = useState<Tab>("lancamentos");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [open, setOpen] = useState(false);
   const month = today().slice(0, 7);
   const [filterMonth, setFilterMonth] = useState(month);
@@ -45,7 +50,7 @@ function Financas() {
 
   return (
     <Page
-      title="Finanças"
+      title={goalsPage ? "Metas" : "Finanças"}
       subtitle="Seu dinheiro sob controle"
       action={
         tab !== "metas" ? (
@@ -59,13 +64,13 @@ function Financas() {
         )
       }
     >
-      <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-4">
+      {!goalsPage && <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-4">
         {tabs.map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className={`rounded-lg py-2 text-sm font-semibold ${tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             {l}
           </button>
         ))}
-      </div>
+      </div>}
 
       {tab === "lancamentos" && (
         <>
@@ -165,6 +170,7 @@ function Financas() {
 
 function FinanceGoals() {
   const data = useData();
+  const [editing, setEditing] = useState<FinanceGoal | null>(null);
 
   if (data.financeGoals.length === 0) {
     return (
@@ -178,6 +184,7 @@ function FinanceGoals() {
 
   return (
     <div className="space-y-3">
+      {editing && <FinanceGoalDialog key={editing.id} open onOpenChange={(value) => { if (!value) setEditing(null); }} goal={editing} />}
       {data.financeGoals.map((goal) => {
         const pct = goal.targetAmount > 0
           ? Math.min(100, Math.max(0, (goal.currentAmount / goal.targetAmount) * 100))
@@ -193,6 +200,7 @@ function FinanceGoals() {
                 <h2 className="break-words font-semibold">{goal.name}</h2>
                 {goal.deadline && <p className="text-xs text-muted-foreground">Prazo: {fmtDate(goal.deadline)}</p>}
               </div>
+              <Button variant="ghost" size="icon" aria-label={`Editar meta ${goal.name}`} onClick={() => setEditing(goal)}><Pencil /></Button>
               <Del onClick={() => update((d) => ({ ...d, financeGoals: d.financeGoals.filter((g) => g.id !== goal.id) }))} />
             </div>
 
@@ -223,7 +231,7 @@ function FinanceGoals() {
                 onClick={() => {
                   const value = prompt("Quanto você guardou? Digite o valor em reais:");
                   if (value === null) return;
-                  const amount = Number(value.replace(",", "."));
+                  const amount = money(value);
                   if (!Number.isFinite(amount) || amount <= 0) {
                     alert("Digite um valor válido maior que zero.");
                     return;
@@ -231,7 +239,7 @@ function FinanceGoals() {
                   update((d) => ({
                     ...d,
                     financeGoals: d.financeGoals.map((g) =>
-                      g.id === goal.id ? { ...g, currentAmount: g.currentAmount + amount } : g,
+                      g.id === goal.id ? { ...g, currentAmount: roundMoney(g.currentAmount + amount) } : g,
                     ),
                   }));
                 }}
@@ -244,7 +252,7 @@ function FinanceGoals() {
                 onClick={() => {
                   const value = prompt("Qual é o valor total que você já guardou?", String(goal.currentAmount).replace(".", ","));
                   if (value === null) return;
-                  const amount = Number(value.replace(",", "."));
+                  const amount = money(value);
                   if (!Number.isFinite(amount) || amount < 0) {
                     alert("Digite um valor válido igual ou maior que zero.");
                     return;
@@ -267,17 +275,17 @@ function FinanceGoals() {
   );
 }
 
-function FinanceGoalDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [name, setName] = useState("");
-  const [target, setTarget] = useState("");
-  const [current, setCurrent] = useState("0");
-  const [deadline, setDeadline] = useState("");
-  const [notes, setNotes] = useState("");
+function FinanceGoalDialog({ open, onOpenChange, goal }: { open: boolean; onOpenChange: (open: boolean) => void; goal?: FinanceGoal }) {
+  const [name, setName] = useState(goal?.name ?? "");
+  const [target, setTarget] = useState(goal ? String(goal.targetAmount) : "");
+  const [current, setCurrent] = useState(goal ? String(goal.currentAmount) : "0");
+  const [deadline, setDeadline] = useState(goal?.deadline ?? "");
+  const [notes, setNotes] = useState(goal?.notes ?? "");
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const targetAmount = Number(target.replace(",", "."));
-    const currentAmount = Number(current.replace(",", "."));
+    const targetAmount = money(target);
+    const currentAmount = money(current);
 
     if (!name.trim() || !Number.isFinite(targetAmount) || targetAmount <= 0 ||
         !Number.isFinite(currentAmount) || currentAmount < 0) {
@@ -287,7 +295,7 @@ function FinanceGoalDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
     update((d) => ({
       ...d,
-      financeGoals: [
+      financeGoals: goal ? d.financeGoals.map(g => g.id === goal.id ? { ...g, name: name.trim(), targetAmount: roundMoney(targetAmount), currentAmount: roundMoney(currentAmount), deadline: deadline || undefined, notes: notes.trim() || undefined } : g) : [
         ...d.financeGoals,
         {
           id: uid(),
@@ -312,7 +320,7 @@ function FinanceGoalDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[92vw] rounded-2xl sm:max-w-md">
-        <DialogHeader><DialogTitle>Nova meta financeira</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{goal ? "Editar meta financeira" : "Nova meta financeira"}</DialogTitle></DialogHeader>
         <form onSubmit={submit} className="space-y-3">
           <label className="block text-sm">
             Nome da meta
@@ -370,6 +378,10 @@ function DebtCard({ debt }: { debt: { id: string; name: string; total: number; p
           e.preventDefault();
           const n = parseFloat(v.replace(",", "."));
           if (!Number.isFinite(n) || n <= 0) return;
+          if (n > roundMoney(debt.total - debt.paid)) {
+            alert("O pagamento não pode superar o saldo restante da dívida.");
+            return;
+          }
           update((d) => ({
             ...d,
             debts: d.debts.map((y) => (y.id === debt.id ? { ...y, paid: Math.min(y.total, y.paid + n) } : y)),

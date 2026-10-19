@@ -12,6 +12,8 @@ export const Route = createFileRoute("/ajustes")({
       { name: "description", content: "Faça backup e restaure seus dados do Gerenciador de Vida." },
       { property: "og:title", content: "Ajustes — Gerenciador de Vida" },
       { property: "og:description", content: "Backup e restauração dos seus dados." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Ajustes,

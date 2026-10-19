@@ -41,7 +41,7 @@ export function BottomNav() {
         <Button asChild variant="ghost" className={item}><Link to="/treinos" activeProps={active}>
           <Dumbbell className="h-5 w-5" /> Treinos
         </Link></Button>
-        <Button asChild variant="ghost" className={item}><Link to="/" hash="metas" activeProps={active} activeOptions={{ exact: true, includeHash: true }}>
+        <Button asChild variant="ghost" className={item}><Link to="/metas" activeProps={active}>
           <Target className="h-5 w-5" /> Metas
         </Link></Button>
         <Button asChild className="h-12 w-12 shrink-0 rounded-full bg-neon p-0 text-neon-foreground hover:bg-neon/90 [&_svg]:size-5"><Link to="/assistente" aria-label="Assistente IA" title="Assistente IA">
