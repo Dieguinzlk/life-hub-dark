@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Home, Wallet, ListChecks, Dumbbell, Settings, Bot } from "lucide-react";
+import { Home, Wallet, ListChecks, Dumbbell, Target, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { ReactNode } from "react";
 
 export function Page({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode }) {
@@ -23,29 +24,29 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 
 
 export function BottomNav() {
-  const item = "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium text-muted-foreground";
-  const active = { className: `${item} text-primary` };
+  const item = "h-12 min-w-0 flex-1 flex-col gap-1 rounded-full px-0 text-[9px] text-muted-foreground transition-all duration-200 hover:text-foreground [&_svg]:size-[18px]";
+  const active = { className: `${item} bg-secondary text-primary` };
   return (
-    <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 backdrop-blur">
-      <div className="mx-auto flex max-w-md">
-        <Link to="/" className={item} activeProps={active} activeOptions={{ exact: true }}>
+    <nav aria-label="Navegação principal" className="pill-nav fixed inset-x-4 z-40 mx-auto max-w-[416px] rounded-full border p-1.5 backdrop-blur-xl">
+      <div className="flex items-center gap-1">
+        <Button asChild variant="ghost" className={item}><Link to="/" activeProps={active} activeOptions={{ exact: true, includeHash: true }}>
           <Home className="h-5 w-5" /> Início
-        </Link>
-        <Link to="/financas" className={item} activeProps={active}>
+        </Link></Button>
+        <Button asChild variant="ghost" className={item}><Link to="/financas" activeProps={active}>
           <Wallet className="h-5 w-5" /> Finanças
-        </Link>
-        <Link to="/rotina" className={item} activeProps={active}>
+        </Link></Button>
+        <Button asChild variant="ghost" className={item}><Link to="/rotina" activeProps={active}>
           <ListChecks className="h-5 w-5" /> Rotina
-        </Link>
-        <Link to="/treinos" className={item} activeProps={active}>
+        </Link></Button>
+        <Button asChild variant="ghost" className={item}><Link to="/treinos" activeProps={active}>
           <Dumbbell className="h-5 w-5" /> Treinos
-        </Link>
-        <Link to="/assistente" className={item} activeProps={active}>
-          <Bot className="h-5 w-5" /> IA
-        </Link>
-        <Link to="/ajustes" className={item} activeProps={active}>
-          <Settings className="h-5 w-5" /> Ajustes
-        </Link>
+        </Link></Button>
+        <Button asChild variant="ghost" className={item}><Link to="/" hash="metas" activeProps={active} activeOptions={{ exact: true, includeHash: true }}>
+          <Target className="h-5 w-5" /> Metas
+        </Link></Button>
+        <Button asChild className="h-12 w-12 shrink-0 rounded-full bg-neon p-0 text-neon-foreground hover:bg-neon/90 [&_svg]:size-5"><Link to="/assistente" aria-label="Assistente IA" title="Assistente IA">
+          <Sparkles />
+        </Link></Button>
       </div>
     </nav>
   );
