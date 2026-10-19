@@ -102,6 +102,19 @@ export type HealthGoal = {
   notes?: string;
 };
 
+// Estrutura do Plano Financeiro Estratégico (50/30/20 com metas temporais)
+export interface FinancialPlan {
+  income: number;
+  targetMonths: number;
+  essentialLimit: number;
+  wantsLimit: number;
+  savingsLimit: number;
+  debtPayoffMonthly: number;
+  reserveMonthly: number;
+  strategies: string[];
+  createdAt: string;
+}
+
 export type AppData = {
   version: 1;
   transactions: Transaction[];
@@ -114,6 +127,7 @@ export type AppData = {
   workoutGoal: number;
   financeGoals: FinanceGoal[];
   healthGoals: HealthGoal[];
+  financialPlan?: FinancialPlan; // <--- Plano Estratégico Salvo
 };
 
 const KEY = "gerenciador-de-vida:v1";
@@ -130,6 +144,7 @@ const empty: AppData = {
   workoutGoal: 3,
   financeGoals: [],
   healthGoals: [],
+  financialPlan: undefined,
 };
 
 function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
@@ -166,6 +181,7 @@ function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
     healthGoals: Array.isArray(saved?.healthGoals)
       ? saved.healthGoals
       : [],
+    financialPlan: saved?.financialPlan ?? undefined, // Preserva o plano estratégico
   };
 }
 
@@ -216,7 +232,7 @@ export function useData(): AppData {
   );
 }
 
-// Helper corrigido para cálculo exato sem duplicação
+// Helper para cálculo exato sem duplicação
 export function getGoalSavedAmount(goal: FinanceGoal): number {
   const contributionsTotal = (goal.contributions || []).reduce((acc, c) => acc + c.amount, 0);
   const initial = goal.initialAmount ?? 0;
