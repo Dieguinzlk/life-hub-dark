@@ -101,8 +101,10 @@ function errorText(error: unknown): string {
 export async function handleChat(request: Request): Promise<Response> {
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) return Response.json({ code: "AI_NOT_CONFIGURED", error: "O Gemini ainda não está configurado neste ambiente. Configure GEMINI_API_KEY no servidor e tente novamente." }, { status: 409 });
+  
   const google = createGoogleGenerativeAI({ apiKey });
-  const model = process.env["GEMINI_MODEL"] || "gemini-2.0-flash";
+  // Modelo configurado para gemini-3.8-flash
+  const model = process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
 
   let body: { messages?: UIMessage[]; snapshot?: unknown; today?: string };
   try {
@@ -117,26 +119,26 @@ export async function handleChat(request: Request): Promise<Response> {
   const snapshot = body.snapshot ? JSON.stringify(body.snapshot).slice(0, 20000) : null;
 
   const instructions = [
-    "Você é o assistente do app Gerenciador de Vida. Responda sempre em português do Brasil, de forma curta e prática.",
+    "Você é o assistente do app Gerenciador de Vida. Responda sempre em português do Brasil, de forma curta, direta e prática.",
     "Ajude com rotina, tarefas, finanças (valores em BRL), hábitos, metas e treinos.",
     "Quando o usuário pedir para criar/registrar/alterar algo, use as ferramentas. Cada ação é confirmada pelo usuário no aparelho antes de ser salva; não diga que salvou antes de receber o resultado.",
     "Se faltar uma informação essencial (ex.: valor de uma despesa), pergunte antes de chamar a ferramenta.",
     `Hoje é ${today}. Use datas no formato AAAA-MM-DD.`,
     snapshot
-      ? `Dados atuais do usuário (compartilhados com autorização): ${snapshot}`
-      : "O usuário NÃO compartilhou seus dados. Você não conhece tarefas, planos ou lançamentos existentes; para ações que precisam de um id existente, peça para ativar 'Compartilhar meus dados'.",
+      ? `Dados atuais do usuário (sincronizados automaticamente): ${snapshot}`
+      : "Sincronização de dados não disponível no momento.",
   ].join("\n");
 
   try {
-  const result = streamText({
-    model: google(model),
-    instructions,
-    messages: await convertToModelMessages(messages),
-    tools,
-    abortSignal: request.signal,
-  });
+    const result = streamText({
+      model: google(model),
+      instructions,
+      messages: await convertToModelMessages(messages),
+      tools,
+      abortSignal: request.signal,
+    });
 
-  return result.toUIMessageStreamResponse({ originalMessages: messages, onError: errorText });
+    return result.toUIMessageStreamResponse({ originalMessages: messages, onError: errorText });
   } catch (error) {
     return Response.json({ error: errorText(error) }, { status: 502 });
   }
