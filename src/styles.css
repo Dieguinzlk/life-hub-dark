@@ -134,6 +134,10 @@
 .home-enter { animation: home-arrive 280ms ease-out both; }
 .habit-check { transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease; }
 .habit-check:active { transform: scale(.97); }
+.home-progress { appearance: none; overflow: hidden; border-radius: 999px; background: var(--secondary); }
+.home-progress::-webkit-progress-bar { background: var(--secondary); }
+.home-progress::-webkit-progress-value { background: var(--primary); transition: width 180ms ease; }
+.home-progress::-moz-progress-bar { background: var(--primary); }
 .habit-check[aria-pressed="true"] .check-mark { animation: check-arrive 180ms ease-out; }
 @keyframes home-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes check-arrive { from { transform: scale(.6); } to { transform: scale(1); } }
