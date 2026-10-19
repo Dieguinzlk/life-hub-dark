@@ -66,14 +66,27 @@ export type Habit = {
   doneDates: string[];
 };
 
+export type Contribution = {
+  id: string;
+  goalId: string;
+  amount: number;
+  date: string; // YYYY-MM-DD (fuso horário local)
+  notes?: string;
+};
+
 export type FinanceGoal = {
   id: string;
   name: string;
   targetAmount: number;
-  currentAmount: number;
+  currentAmount: number; // Mantido para compatibilidade total
+  initialAmount?: number; // Valor inicial guardado
+  startDate?: string;
   deadline?: string | undefined;
+  frequency?: "daily" | "monthly";
+  contributions?: Contribution[]; // Histórico de depósitos confirmados
   createdAt: string;
   notes?: string | undefined;
+  estimatedReturnRate?: number; // Taxa anual % opcional para simulação
 };
 
 export type HealthGoal = {
@@ -120,6 +133,14 @@ const empty: AppData = {
 };
 
 function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
+  const normalizedFinanceGoals = (Array.isArray(saved?.financeGoals) ? saved.financeGoals : []).map(g => ({
+    ...g,
+    initialAmount: g.initialAmount ?? 0,
+    frequency: g.frequency || "monthly",
+    contributions: Array.isArray(g.contributions) ? g.contributions : [],
+    startDate: g.startDate || g.createdAt || today(),
+  }));
+
   return {
     ...empty,
     ...(saved || {}),
@@ -133,9 +154,7 @@ function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
     workoutLogs: Array.isArray(saved?.workoutLogs) ? saved.workoutLogs : [],
     workoutGoal:
       typeof saved?.workoutGoal === "number" ? saved.workoutGoal : 3,
-    financeGoals: Array.isArray(saved?.financeGoals)
-      ? saved.financeGoals
-      : [],
+    financeGoals: normalizedFinanceGoals,
     healthGoals: Array.isArray(saved?.healthGoals)
       ? saved.healthGoals
       : [],
@@ -189,6 +208,15 @@ export function useData(): AppData {
   );
 }
 
+// Helpers úteis para cálculo nas Metas
+export function getGoalSavedAmount(goal: FinanceGoal): number {
+  const contributionsTotal = (goal.contributions || []).reduce((acc, c) => acc + c.amount, 0);
+  const initial = goal.initialAmount ?? 0;
+  // Fallback seguro caso utilize currentAmount legado
+  const base = initial > 0 ? initial : (goal.currentAmount > 0 ? goal.currentAmount : 0);
+  return base + contributionsTotal;
+}
+
 export const uid = () =>
   Math.random().toString(36).slice(2) + Date.now().toString(36);
 
@@ -207,6 +235,7 @@ export const brl = (n: number) =>
   });
 
 export const fmtDate = (value: string) => {
+  if (!value) return "";
   const [year, month, day] = value.split("-");
   return `${day}/${month}/${year}`;
 };
