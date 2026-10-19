@@ -48,22 +48,39 @@ function Assistente() {
       new DefaultChatTransport({
         api: "/api/chat",
         fetch: async (url, options) => {
-          const response = await fetch(url, options);
-          if (!response.ok) {
-            const body: unknown = await response.json().catch(() => null);
-            const message =
-              body && typeof body === "object" && "error" in body && typeof body.error === "string"
-                ? body.error
-                : "Não foi possível falar com a IA agora. Tente novamente.";
-            throw new Error(message);
+          try {
+            const response = await fetch(url, options);
+            
+            // Trata erros HTTP como 429 (Too Many Requests), 503 ou mensagens de alta demanda
+            if (!response.ok) {
+              const body: unknown = await response.json().catch(() => null);
+              
+              if (response.status === 429 || response.status === 503) {
+                throw new Error("O assistente está com alta demanda no momento. Aguarde alguns segundos e tente novamente.");
+              }
+
+              const message =
+                body && typeof body === "object" && "error" in body && typeof body.error === "string"
+                  ? body.error
+                  : "Não foi possível falar com a IA agora. Tente novamente.";
+              throw new Error(message);
+            }
+            return response;
+          } catch (err: unknown) {
+            // Trata falhas de rede ou retry excedido do AI SDK
+            if (err instanceof Error) {
+              if (err.message.includes("high demand") || err.message.includes("Failed after")) {
+                throw new Error("Alta demanda nos servidores da IA. Aguarde um momento e tente novamente.");
+              }
+              throw err;
+            }
+            throw new Error("Erro de conexão ao comunicar com o assistente.");
           }
-          return response;
         },
         prepareSendMessagesRequest: ({ messages }) => ({
           body: {
             messages,
             today: today(),
-            // Envia sempre o snapshot dos dados automaticamente
             snapshot: buildSnapshot(dataRef.current),
           },
         }),
@@ -73,7 +90,14 @@ function Assistente() {
   const { messages, sendMessage, status, stop, addToolOutput, setMessages } = useChat({
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    onError: (e) => setError(e.message || "Erro de conexão com a IA."),
+    onError: (e) => {
+      const msg = e?.message || "";
+      if (msg.includes("high demand") || msg.includes("429") || msg.includes("Failed after")) {
+        setError("O assistente está com alta demanda nos servidores. Tente novamente em alguns segundos.");
+      } else {
+        setError(msg || "Erro de conexão com a IA.");
+      }
+    },
   });
   const busy = status === "submitted" || status === "streaming";
 
