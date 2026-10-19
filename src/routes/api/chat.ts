@@ -1,7 +1,25 @@
-import { google } from '@ai-sdk/google';
+import { createFileRoute } from "@tanstack/react-router";
+import { handleChat } from "@/lib/ai.server";
 
-// Definição do modelo atualizado recomendado pela API
-const modelName = process.env.GEMINI_MODEL || 'models/gemini-3.8-flash';
-
-// Exemplo de uso na sua função de chat ou configuração do SDK
-export const aiModel = google(modelName);
+export const Route = createFileRoute("/api/chat")({
+  loader: async () => {},
+  component: () => null,
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        try {
+          return await handleChat(request);
+        } catch (error) {
+          console.error("Erro na API de chat:", error);
+          return new Response(
+            JSON.stringify({ error: "Erro interno ao processar o chat." }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+      },
+    },
+  },
+});
