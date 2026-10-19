@@ -188,7 +188,9 @@ export async function handleChat(request: Request): Promise<Response> {
       { status: 409 },
     );
   const google = createGoogleGenerativeAI({ apiKey });
-  const model = process.env["GEMINI_MODEL"] || "gemini-2.0-flash";
+  
+  // Atualizado para o modelo correto recomendado
+  const model = process.env["GEMINI_MODEL"] || "models/gemini-3.8-flash";
 
   const messages = body.messages;
 
@@ -205,8 +207,8 @@ export async function handleChat(request: Request): Promise<Response> {
     "Se faltar uma informação essencial (ex.: valor de uma despesa), pergunte antes de chamar a ferramenta.",
     `Hoje é ${today}. Use datas no formato AAAA-MM-DD.`,
     snapshot
-      ? `Dados atuais do usuário (compartilhados com autorização): ${snapshot}`
-      : "O usuário NÃO compartilhou seus dados. Você não conhece tarefas, planos ou lançamentos existentes; para ações que precisam de um id existente, peça para ativar 'Compartilhar meus dados'.",
+      ? `Dados atuais do usuário: ${snapshot}`
+      : "Dados atuais do usuário disponíveis para consulta no app.",
   ].join("\n");
 
   try {
