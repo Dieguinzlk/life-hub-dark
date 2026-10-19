@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react";
+import { backupSchema } from "@/lib/data-validation";
+import { toast } from "sonner";
 
 export type Transaction = {
   id: string;
@@ -144,6 +146,7 @@ function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
 
 let state: AppData = empty;
 let loaded = false;
+let loadFailed = false;
 const listeners = new Set<() => void>();
 
 function load() {
@@ -153,24 +156,38 @@ function load() {
 
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) state = normalizeData(JSON.parse(raw));
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (!backupSchema.safeParse(parsed).success) throw new Error("Dados locais inválidos");
+      state = normalizeData(parsed as Partial<AppData>);
+    }
   } catch {
+    loadFailed = true;
     state = empty;
+    toast.error("Não foi possível ler os dados locais. Eles não foram apagados. Restaure um backup válido antes de salvar alterações.");
   }
 }
 
 function setState(next: AppData) {
-  state = normalizeData(next);
+  const normalized = normalizeData(next);
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    try {
+      localStorage.setItem(KEY, JSON.stringify(normalized));
+    } catch {
+      toast.error("Não foi possível salvar neste aparelho. Libere espaço ou permita o armazenamento e tente novamente.");
+      throw new Error("Alteração não salva: armazenamento indisponível.");
+    }
   }
+  state = normalized;
+  loadFailed = false;
 
   listeners.forEach((listener) => listener());
 }
 
 export function update(fn: (data: AppData) => AppData) {
   load();
+  if (loadFailed) throw new Error("Restaure um backup válido antes de salvar alterações.");
   setState(fn(state));
 }
 
@@ -229,13 +246,14 @@ export function exportBackup() {
 }
 
 export async function importBackup(file: File) {
-  const parsed = JSON.parse(await file.text());
+  if (file.size > 10 * 1024 * 1024) throw new Error("Backup muito grande (máximo 10 MB).");
+  const parsed: unknown = JSON.parse(await file.text());
 
-  if (!parsed || !Array.isArray(parsed.transactions)) {
+  if (!backupSchema.safeParse(parsed).success) {
     throw new Error("Arquivo inválido");
   }
 
-  setState(normalizeData(parsed));
+  setState(normalizeData(parsed as Partial<AppData>));
 }
 
 export function clearAll() {
