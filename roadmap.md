@@ -2,3 +2,6 @@
 - [ ] Renovar a barra inferior flutuante, com acesso à IA à direita.
 - [ ] Renovar a Home com saldo, assistente, hábitos interativos e vencimentos.
 - [ ] Verificar interação, persistência e apresentação em celular.
+- [ ] Auditar configurações, dependências, rotas e erros de carregamento.
+- [ ] Corrigir problemas comprovados de dados, backups e validação da IA.
+- [ ] Validar os fluxos principais e apresentar relatório com limitações reais.
