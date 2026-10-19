@@ -15,10 +15,10 @@ export const Route = createFileRoute("/financas")({
       { title: "Finanças — Gerenciador de Vida" },
       {
         name: "description",
-        content: "Controle receitas, despesas, contas, dívidas e metas financeiras.",
+        content: "Controle receitas, despesas, contas, dívidas, metas e negócio.",
       },
       { property: "og:title", content: "Finanças — Gerenciador de Vida" },
-      { property: "og:description", content: "Controle suas finanças e acompanhe suas metas." },
+      { property: "og:description", content: "Controle suas finanças, metas e negócio." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -32,6 +32,9 @@ type Tab =
   | "dividas"
   | "metas"
   | "negocio";
+
+type BusinessSubTab = "vendas" | "gastos" | "contas";
+
 const CATS = [
   "Alimentação",
   "Moradia",
@@ -42,6 +45,16 @@ const CATS = [
   "Salário",
   "Outros",
 ];
+
+const BIZ_CATS = [
+  "Fornecedores",
+  "Estoque",
+  "Marketing",
+  "Taxas e Impostos",
+  "Equipamentos",
+  "Outros",
+];
+
 const field =
   "h-12 w-full rounded-xl border bg-input/40 px-3 text-base outline-none focus:border-primary";
 
@@ -52,38 +65,38 @@ export function Financas({
   initialTab?: Tab;
   goalsPage?: boolean;
 }) {
-  const data = useData();
+  const data = useData() as any;
   const [tab, setTab] = useState<Tab>(initialTab);
   const [open, setOpen] = useState(false);
   const month = today().slice(0, 7);
   const [filterMonth, setFilterMonth] = useState(month);
 
-  const tx = data.transactions
-    .filter((x) => x.date.startsWith(filterMonth))
-    .sort((a, b) => b.date.localeCompare(a.date));
-  const inc = tx.filter((x) => x.type === "receita").reduce((s, x) => s + x.amount, 0);
-  const exp = tx.filter((x) => x.type === "despesa").reduce((s, x) => s + x.amount, 0);
+  const tx = (data.transactions || [])
+    .filter((x: any) => x.date.startsWith(filterMonth))
+    .sort((a: any, b: any) => b.date.localeCompare(a.date));
+  const inc = tx.filter((x: any) => x.type === "receita").reduce((s: number, x: any) => s + x.amount, 0);
+  const exp = tx.filter((x: any) => x.type === "despesa").reduce((s: number, x: any) => s + x.amount, 0);
   const byCat = Object.entries(
     tx
-      .filter((x) => x.type === "despesa")
+      .filter((x: any) => x.type === "despesa")
       .reduce<Record<string, number>>(
-        (acc, x) => ((acc[x.category] = (acc[x.category] || 0) + x.amount), acc),
+        (acc: any, x: any) => ((acc[x.category] = (acc[x.category] || 0) + x.amount), acc),
         {},
       ),
-  ).sort((a, b) => b[1] - a[1]);
+  ).sort((a: any, b: any) => b[1] - a[1]);
 
   const tabs: [Tab, string][] = [
-  ["lancamentos", "Lançamentos"],
-  ["contas", "Contas"],
-  ["dividas", "Dívidas"],
-  ["metas", "Metas"],
-  ["negocio", "Negócio"],
-];
+    ["lancamentos", "Lançamentos"],
+    ["contas", "Contas"],
+    ["dividas", "Dívidas"],
+    ["metas", "Metas"],
+    ["negocio", "Negócio"],
+  ];
 
   return (
     <Page
       title={goalsPage ? "Metas" : "Finanças"}
-      subtitle="Seu dinheiro sob controle"
+      subtitle="Seu dinheiro e negócio sob controle"
       action={
         tab !== "metas" ? (
           <button
@@ -103,7 +116,7 @@ export function Financas({
       }
     >
       {!goalsPage && (
-        <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-3 lg:grid-cols-5">
           {tabs.map(([k, l]) => (
             <button
               key={k}
@@ -142,7 +155,7 @@ export function Financas({
             <Card className="mb-4">
               <h2 className="mb-3 font-semibold">Gastos por categoria</h2>
               <div className="space-y-2">
-                {byCat.map(([c, v]) => (
+                {byCat.map(([c, v]: [string, any]) => (
                   <div key={c}>
                     <div className="mb-1 flex justify-between text-sm">
                       <span>{c}</span>
@@ -166,7 +179,7 @@ export function Financas({
               </p>
             )}
             <ul className="divide-y">
-              {tx.map((x) => (
+              {tx.map((x: any) => (
                 <li key={x.id} className="flex items-center gap-3 py-3">
                   <div className="flex-1">
                     <p className="font-medium">{x.description}</p>
@@ -182,9 +195,9 @@ export function Financas({
                   </span>
                   <Del
                     onClick={() =>
-                      update((d) => ({
+                      update((d: any) => ({
                         ...d,
-                        transactions: d.transactions.filter((y) => y.id !== x.id),
+                        transactions: (d.transactions || []).filter((y: any) => y.id !== x.id),
                       }))
                     }
                   />
@@ -197,27 +210,27 @@ export function Financas({
 
       {tab === "contas" && (
         <Card>
-          {data.bills.length === 0 && (
+          {(data.bills || []).length === 0 && (
             <p className="text-sm text-muted-foreground">Nenhuma conta cadastrada.</p>
           )}
           <ul className="divide-y">
-            {[...data.bills]
-              .sort((a, b) => Number(a.paid) - Number(b.paid) || a.dueDate.localeCompare(b.dueDate))
-              .map((b) => {
+            {[...(data.bills || [])]
+              .sort((a: any, b: any) => Number(a.paid) - Number(b.paid) || a.dueDate.localeCompare(b.dueDate))
+              .map((b: any) => {
                 const late = !b.paid && b.dueDate < today();
                 return (
                   <li key={b.id} className="flex items-center gap-3 py-3">
                     <button
                       aria-label="Marcar como paga"
                       onClick={() =>
-                        update((d) => {
+                        update((d: any) => {
                           const paying = !b.paid;
                           return {
                             ...d,
-                            bills: d.bills.map((y) => (y.id === b.id ? { ...y, paid: paying } : y)),
+                            bills: (d.bills || []).map((y: any) => (y.id === b.id ? { ...y, paid: paying } : y)),
                             transactions: paying
                               ? [
-                                  ...d.transactions,
+                                  ...(d.transactions || []),
                                   {
                                     id: "bill-" + b.id,
                                     type: "despesa",
@@ -227,7 +240,7 @@ export function Financas({
                                     date: today(),
                                   },
                                 ]
-                              : d.transactions.filter((t) => t.id !== "bill-" + b.id),
+                              : (d.transactions || []).filter((t: any) => t.id !== "bill-" + b.id),
                           };
                         })
                       }
@@ -251,14 +264,14 @@ export function Financas({
                     <span className="font-semibold">{brl(b.amount)}</span>
                     <Del
                       onClick={() =>
-                        update((d) => ({ ...d, bills: d.bills.filter((y) => y.id !== b.id) }))
+                        update((d: any) => ({ ...d, bills: (d.bills || []).filter((y: any) => y.id !== b.id) }))
                       }
                     />
                   </li>
                 );
               })}
           </ul>
-          {data.bills.length > 0 && (
+          {(data.bills || []).length > 0 && (
             <p className="mt-2 text-xs text-muted-foreground">
               Ao marcar como paga, a despesa é lançada automaticamente.
             </p>
@@ -268,12 +281,12 @@ export function Financas({
 
       {tab === "dividas" && (
         <div className="space-y-3">
-          {data.debts.length === 0 && (
+          {(data.debts || []).length === 0 && (
             <Card>
               <p className="text-sm text-muted-foreground">Nenhuma dívida cadastrada. Ótimo! 🎉</p>
             </Card>
           )}
-          {data.debts.map((d) => (
+          {(data.debts || []).map((d: any) => (
             <DebtCard key={d.id} debt={d} />
           ))}
         </div>
@@ -281,13 +294,413 @@ export function Financas({
 
       {tab === "metas" && <FinanceGoals />}
 
-      <NewDialog
-        open={open && tab !== "metas"}
-        onOpenChange={setOpen}
-        tab={tab === "contas" || tab === "dividas" ? tab : "lancamentos"}
-      />
+      {tab === "negocio" && <BusinessPanel />}
+
+      {tab !== "negocio" && (
+        <NewDialog
+          open={open && tab !== "metas"}
+          onOpenChange={setOpen}
+          tab={tab === "contas" || tab === "dividas" ? tab : "lancamentos"}
+        />
+      )}
+
       <FinanceGoalDialog open={open && tab === "metas"} onOpenChange={setOpen} />
+      <BusinessDialog open={open && tab === "negocio"} onOpenChange={setOpen} />
     </Page>
+  );
+}
+
+function BusinessPanel() {
+  const data = useData() as any;
+  const [subTab, setSubTab] = useState<BusinessSubTab>("vendas");
+  const month = today().slice(0, 7);
+  const [filterMonth, setFilterMonth] = useState(month);
+
+  const sales = (data.businessSales || []).filter((x: any) => x.date.startsWith(filterMonth));
+  const expenses = (data.businessExpenses || []).filter((x: any) => x.date.startsWith(filterMonth));
+  const bizBills = data.businessBills || [];
+
+  const totalSold = sales.reduce((s: number, x: any) => s + x.price * x.quantity, 0);
+  const totalReceived = sales.filter((x: any) => x.paid).reduce((s: number, x: any) => s + x.price * x.quantity, 0);
+  const totalExpenses = expenses.reduce((s: number, x: any) => s + x.amount, 0);
+  const netProfit = totalReceived - totalExpenses;
+
+  return (
+    <div className="space-y-4">
+      <input
+        type="month"
+        value={filterMonth}
+        onChange={(e) => setFilterMonth(e.target.value || month)}
+        className={field}
+      />
+
+      <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+        <Card className="p-3">
+          <p className="text-xs text-muted-foreground">Vendido</p>
+          <p className="text-sm font-semibold text-primary">{brl(totalSold)}</p>
+        </Card>
+        <Card className="p-3">
+          <p className="text-xs text-muted-foreground">Recebido</p>
+          <p className="text-sm font-semibold text-success">{brl(totalReceived)}</p>
+        </Card>
+        <Card className="p-3">
+          <p className="text-xs text-muted-foreground">Gastos</p>
+          <p className="text-sm font-semibold text-destructive">{brl(totalExpenses)}</p>
+        </Card>
+        <Card className="p-3">
+          <p className="text-xs text-muted-foreground">Resultado</p>
+          <p className={`text-sm font-semibold ${netProfit >= 0 ? "text-success" : "text-destructive"}`}>
+            {brl(netProfit)}
+          </p>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
+        <button
+          onClick={() => setSubTab("vendas")}
+          className={`rounded-lg py-2 text-xs font-semibold ${subTab === "vendas" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+        >
+          Vendas
+        </button>
+        <button
+          onClick={() => setSubTab("gastos")}
+          className={`rounded-lg py-2 text-xs font-semibold ${subTab === "gastos" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+        >
+          Gastos
+        </button>
+        <button
+          onClick={() => setSubTab("contas")}
+          className={`rounded-lg py-2 text-xs font-semibold ${subTab === "contas" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+        >
+          Contas
+        </button>
+      </div>
+
+      {subTab === "vendas" && (
+        <Card>
+          {sales.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhuma venda registrada neste mês.</p>
+          )}
+          <ul className="divide-y">
+            {sales.map((s: any) => {
+              const totalVal = s.price * s.quantity;
+              return (
+                <li key={s.id} className="flex items-center gap-3 py-3">
+                  <button
+                    aria-label="Marcar como recebido"
+                    onClick={() =>
+                      update((d: any) => ({
+                        ...d,
+                        businessSales: (d.businessSales || []).map((item: any) =>
+                          item.id === s.id ? { ...item, paid: !item.paid } : item
+                        ),
+                      }))
+                    }
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 ${s.paid ? "border-success bg-success text-success-foreground" : "border-muted-foreground"}`}
+                  >
+                    {s.paid && <Check className="h-4 w-4 text-white" />}
+                  </button>
+                  <div className="flex-1">
+                    <p className="font-medium">{s.product} ({s.quantity}x)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Cliente: {s.client || "Geral"} · {fmtDate(s.date)}
+                    </p>
+                  </div>
+                  <span className={`font-semibold ${s.paid ? "text-success" : ""}`}>
+                    {brl(totalVal)}
+                  </span>
+                  <Del
+                    onClick={() =>
+                      update((d: any) => ({
+                        ...d,
+                        businessSales: (d.businessSales || []).filter((item: any) => item.id !== s.id),
+                      }))
+                    }
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+
+      {subTab === "gastos" && (
+        <Card>
+          {expenses.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum gasto do negócio neste mês.</p>
+          )}
+          <ul className="divide-y">
+            {expenses.map((e: any) => (
+              <li key={e.id} className="flex items-center gap-3 py-3">
+                <div className="flex-1">
+                  <p className="font-medium">{e.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {e.category} · {fmtDate(e.date)}
+                  </p>
+                </div>
+                <span className="font-semibold text-destructive">−{brl(e.amount)}</span>
+                <Del
+                  onClick={() =>
+                    update((d: any) => ({
+                      ...d,
+                      businessExpenses: (d.businessExpenses || []).filter((item: any) => item.id !== e.id),
+                    }))
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {subTab === "contas" && (
+        <Card>
+          {bizBills.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhuma conta a pagar do negócio.</p>
+          )}
+          <ul className="divide-y">
+            {bizBills.map((b: any) => {
+              const late = !b.paid && b.dueDate < today();
+              return (
+                <li key={b.id} className="flex items-center gap-3 py-3">
+                  <button
+                    aria-label="Marcar como paga"
+                    onClick={() =>
+                      update((d: any) => ({
+                        ...d,
+                        businessBills: (d.businessBills || []).map((item: any) =>
+                          item.id === b.id ? { ...item, paid: !item.paid } : item
+                        ),
+                      }))
+                    }
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 ${b.paid ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"}`}
+                  >
+                    {b.paid && <Check className="h-4 w-4" />}
+                  </button>
+                  <div className="flex-1">
+                    <p className={`font-medium ${b.paid ? "text-muted-foreground line-through" : ""}`}>
+                      {b.description}
+                    </p>
+                    <p className={`text-xs ${late ? "text-destructive" : "text-muted-foreground"}`}>
+                      {late ? "Atrasada · " : "Vence "} {fmtDate(b.dueDate)}
+                    </p>
+                  </div>
+                  <span className="font-semibold">{brl(b.amount)}</span>
+                  <Del
+                    onClick={() =>
+                      update((d: any) => ({
+                        ...d,
+                        businessBills: (d.businessBills || []).filter((item: any) => item.id !== b.id),
+                      }))
+                    }
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function BusinessDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [type, setType] = useState<"venda" | "gasto" | "conta">("venda");
+  const [desc, setDesc] = useState("");
+  const [amount, setAmount] = useState("");
+  const [qty, setQty] = useState("1");
+  const [client, setClient] = useState("");
+  const [cat, setCat] = useState(BIZ_CATS[0]);
+  const [date, setDate] = useState(today());
+  const [paid, setPaid] = useState(false);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const n = parseFloat(amount.replace(",", "."));
+    if (!desc.trim() || !Number.isFinite(n) || n <= 0) return;
+
+    update((d: any) => {
+      if (type === "venda") {
+        const quantity = parseInt(qty) || 1;
+        return {
+          ...d,
+          businessSales: [
+            ...(d.businessSales || []),
+            {
+              id: uid(),
+              product: desc.trim(),
+              quantity,
+              price: n,
+              client: client.trim(),
+              paid,
+              date,
+            },
+          ],
+        };
+      }
+      if (type === "gasto") {
+        return {
+          ...d,
+          businessExpenses: [
+            ...(d.businessExpenses || []),
+            {
+              id: uid(),
+              description: desc.trim(),
+              amount: n,
+              category: cat,
+              date,
+            },
+          ],
+        };
+      }
+      return {
+        ...d,
+        businessBills: [
+          ...(d.businessBills || []),
+          {
+            id: uid(),
+            description: desc.trim(),
+            amount: n,
+            dueDate: date,
+            paid,
+          },
+        ],
+      };
+    });
+
+    setDesc("");
+    setAmount("");
+    setQty("1");
+    setClient("");
+    setDate(today());
+    setPaid(false);
+    onOpenChange(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[92vw] rounded-2xl sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Novo registro no Negócio</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-3">
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
+            {(["venda", "gasto", "conta"] as const).map((k) => (
+              <button
+                type="button"
+                key={k}
+                onClick={() => setType(k)}
+                className={`rounded-lg py-2 text-xs font-semibold capitalize ${type === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              >
+                {k === "venda" ? "Venda" : k === "gasto" ? "Gasto" : "Conta"}
+              </button>
+            ))}
+          </div>
+
+          <input
+            required
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder={
+              type === "venda"
+                ? "Nome do produto / serviço"
+                : type === "gasto"
+                ? "Descrição do gasto"
+                : "Descrição da conta"
+            }
+            className={field}
+          />
+
+          {type === "venda" && (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                required
+                type="number"
+                min="1"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                placeholder="Qtd"
+                className={field}
+              />
+              <input
+                required
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Preço unitário (R$)"
+                className={field}
+              />
+            </div>
+          )}
+
+          {type !== "venda" && (
+            <input
+              required
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Valor (R$)"
+              className={field}
+            />
+          )}
+
+          {type === "venda" && (
+            <input
+              value={client}
+              onChange={(e) => setClient(e.target.value)}
+              placeholder="Nome do cliente (opcional)"
+              className={field}
+            />
+          )}
+
+          {type === "gasto" && (
+            <select value={cat} onChange={(e) => setCat(e.target.value)} className={field}>
+              {BIZ_CATS.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          )}
+
+          <label className="block text-sm text-muted-foreground">
+            {type === "conta" ? "Vencimento" : "Data"}
+            <input
+              required
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className={`${field} mt-1`}
+            />
+          </label>
+
+          <label className="flex items-center gap-2 pt-1 text-sm">
+            <input
+              type="checkbox"
+              checked={paid}
+              onChange={(e) => setPaid(e.target.checked)}
+              className="h-4 w-4 rounded border"
+            />
+            {type === "venda" ? "Já recebido" : type === "conta" ? "Já pago" : "Pago"}
+          </label>
+
+          <button
+            type="submit"
+            className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground"
+          >
+            Salvar registro
+          </button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
