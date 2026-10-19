@@ -26,7 +26,12 @@ export const Route = createFileRoute("/financas")({
   component: Financas,
 });
 
-type Tab = "lancamentos" | "contas" | "dividas" | "metas";
+type Tab =
+  | "lancamentos"
+  | "contas"
+  | "dividas"
+  | "metas"
+  | "negocio";
 const CATS = [
   "Alimentação",
   "Moradia",
@@ -68,11 +73,12 @@ export function Financas({
   ).sort((a, b) => b[1] - a[1]);
 
   const tabs: [Tab, string][] = [
-    ["lancamentos", "Lançamentos"],
-    ["contas", "Contas"],
-    ["dividas", "Dívidas"],
-    ["metas", "Metas"],
-  ];
+  ["lancamentos", "Lançamentos"],
+  ["contas", "Contas"],
+  ["dividas", "Dívidas"],
+  ["metas", "Metas"],
+  ["negocio", "Negócio"],
+];
 
   return (
     <Page
