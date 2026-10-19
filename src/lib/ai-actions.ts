@@ -1,4 +1,4 @@
-import { brl, fmtDate, today, uid, update, type AppData, type Exercise, type Priority } from "@/lib/store";
+import { brl, fmtDate, today, uid, update, getGoalSavedAmount, type AppData, type Exercise, type Priority, type Contribution } from "@/lib/store";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Input = any;
@@ -67,10 +67,50 @@ export function prepareAction(name: string, input: Input, data: AppData): Prepar
     }
     case "add_finance_goal": {
       const deadline = input.deadline == null ? undefined : isDate(input.deadline) ? input.deadline : bad("Prazo inválido");
-      const g = { id: uid(), name: str(input.name, "Nome"), targetAmount: pos(input.targetAmount, "Valor da meta"), currentAmount: input.currentAmount == null ? 0 : nonneg(input.currentAmount, "Valor guardado"), createdAt: today(), ...(deadline ? { deadline } : {}) };
+      const initial = input.initialAmount == null ? 0 : nonneg(input.initialAmount, "Valor inicial");
+      const g = { 
+        id: uid(), 
+        name: str(input.name, "Nome"), 
+        targetAmount: pos(input.targetAmount, "Valor da meta"), 
+        currentAmount: initial, 
+        initialAmount: initial, 
+        contributions: [], 
+        createdAt: today(), 
+        ...(deadline ? { deadline } : {}) 
+      };
       return {
         summary: `Criar meta financeira "${g.name}": ${brl(g.targetAmount)}${deadline ? ` até ${fmtDate(deadline)}` : ""}`,
         apply: () => (update((d) => ({ ...d, financeGoals: [...d.financeGoals, g] })), "Meta criada"),
+      };
+    }
+    case "add_goal_contribution": {
+      const goal = data.financeGoals.find((g) => g.id === input.goalId || g.name.toLowerCase() === String(input.goalName || "").toLowerCase()) ?? bad("Meta financeira não encontrada");
+      const amount = pos(input.amount, "Valor do depósito");
+      const date = dateOr(input.date);
+      const notes = typeof input.notes === "string" && input.notes.trim() ? input.notes.trim() : undefined;
+
+      const contrib: Contribution = { id: uid(), goalId: goal.id, amount, date, ...(notes ? { notes } : {}) };
+
+      return {
+        summary: `Registrar depósito de ${brl(amount)} na meta "${goal.name}" em ${fmtDate(date)}`,
+        apply: () => {
+          update((d) => ({
+            ...d,
+            financeGoals: d.financeGoals.map((g) => {
+              if (g.id === goal.id) {
+                const contributions = Array.isArray(g.contributions) ? [...g.contributions, contrib] : [contrib];
+                const savedTotal = (g.initialAmount ?? 0) + contributions.reduce((acc, c) => acc + c.amount, 0);
+                return {
+                  ...g,
+                  contributions,
+                  currentAmount: savedTotal,
+                };
+              }
+              return g;
+            }),
+          }));
+          return "Depósito registrado na meta";
+        },
       };
     }
     case "add_health_goal": {
@@ -115,7 +155,7 @@ export function prepareAction(name: string, input: Input, data: AppData): Prepar
   }
 }
 
-/** Resumo compacto enviado à IA somente quando o usuário autoriza. */
+/** Resumo compacto enviado à IA contendo dados sincronizados do usuário. */
 export function buildSnapshot(d: AppData) {
   const month = today().slice(0, 7);
   const monthTx = d.transactions.filter((t) => t.date.startsWith(month));
@@ -131,7 +171,13 @@ export function buildSnapshot(d: AppData) {
     planos: d.plans.map((p) => ({ id: p.id, name: p.name, exercises: p.exercises.map((e: Exercise) => `${e.name} ${e.sets}x${e.reps}${e.weight ? ` ${e.weight}kg` : ""}`) })),
     treinosRecentes: d.workoutLogs.slice(0, 10).map((l) => ({ planName: l.planName, date: l.date })),
     metaTreinosSemana: d.workoutGoal,
-    metasFinanceiras: d.financeGoals.map(({ name, targetAmount, currentAmount, deadline }) => ({ name, targetAmount, currentAmount, deadline })),
+    metasFinanceiras: (d.financeGoals || []).map((g) => ({
+      id: g.id,
+      name: g.name,
+      targetAmount: g.targetAmount,
+      currentAmount: getGoalSavedAmount(g), // Cálculo unificado
+      deadline: g.deadline,
+    })),
     metasSaude: d.healthGoals.map(({ name, currentValue, targetValue, unit }) => ({ name, currentValue, targetValue, unit })),
   };
 }
