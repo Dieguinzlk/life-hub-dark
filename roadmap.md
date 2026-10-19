@@ -7,7 +7,7 @@
 - [x] Validar os fluxos principais e apresentar relatório com limitações reais.
 - [ ] Verificar inferência real Gemini e deployment Vercel: depende da chave e acesso à configuração externa.
 - [x] Reinspecionar o projeto e executar diagnóstico não destrutivo da nova auditoria.
-- [ ] Aplicar correções localizadas da nova auditoria: aguardando aprovação do plano.
-- [ ] Validar regressões e atualizar relatório após as correções aprovadas.
+- [x] Aplicar correções localizadas aprovadas, sem trocar o modelo ou alterar armazenamento e visual.
+- [x] Validar regressões de pagamento, backup, leitura dos módulos e atualizar relatório com limites reais.
 - [ ] Verificar vínculo e branch oficiais do GitHub e proteção compartilhada da Vercel: depende de acesso externo.
 - [ ] Reavaliar segurança com análise profunda recente: depende de nova análise na aba Segurança.

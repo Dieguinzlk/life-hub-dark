@@ -11,13 +11,10 @@ export const Route = createFileRoute("/api/chat")({
           return await handleChat(request);
         } catch (error) {
           console.error("Erro na API de chat:", error);
-          return new Response(
-            JSON.stringify({ error: "Erro interno ao processar o chat." }),
-            {
-              status: 500,
-              headers: { "Content-Type": "application/json" },
-            }
-          );
+          return new Response(JSON.stringify({ error: "Erro interno ao processar o chat." }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

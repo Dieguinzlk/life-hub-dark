@@ -1,5 +1,38 @@
 # Auditoria — Gerenciador de Vida
 
+## Revalidação segura — 19/10/2026
+
+Esta seção registra a nova execução e prevalece sobre resultados históricos abaixo quando houver divergência. Não houve publicação, migração de dados, atualização de dependências, alteração do modelo ou redesenho. Foram usados apenas contextos isolados de navegador e dados de teste.
+
+### Identidade e escopo
+- Ambiente gerenciado pelo Lovable, branch `edit/edt-b0154cbe-7d37-4f83-bb80-0e23fc810597`, commit inicial `69b6c9e`. O vínculo e a branch externos de `Dieguinzlk/life-hub-dark` não foram confirmados; não foi criado outro projeto nem trocado o repositório.
+- Reinspecionados package.json, .gitignore, AGENTS.md, roadmap.md, vite.config.ts, tsconfig.json, vitest.config.ts, store.ts, data-validation.ts, ai.server.ts, api/chat.ts, assistente.tsx, ajustes.tsx e testes. Investigação delegada conferiu lockfile, árvore e rotas, ai-actions e telas de finanças, metas, rotina e treinos. Não se declara revisão linha a linha de todos os arquivos.
+
+### Problemas e alterações localizadas
+- **Média — divergência no teste do modelo:** 12 de 13 testes passaram inicialmente. O código usa `GEMINI_MODEL` ou `models/gemini-3.8-flash`, não o padrão histórico registrado abaixo. `src/test/ai-server.test.ts` foi alinhado ao comportamento preservado e recebeu teste da precedência de `GEMINI_MODEL`. Isso não valida disponibilidade real do modelo nem é uma correção de erro 404 do provedor.
+- **Média — pagamento validado contra saldo anterior:** `src/routes/financas.tsx` agora chama `recordDebtPayment` dentro de `update`. O novo `src/lib/debt-payment.ts` valida existência e saldo na mesma operação que produz dívida e despesa. `src/test/debt-payment.test.ts` cobre pagamento válido, saldo atualizado insuficiente, dívida ausente e valor inválido. A inconsistência de estado foi isolada em teste; não se afirma ocorrência anterior no uso cotidiano.
+- **Baixa — formatação:** cinco erros iniciais de lint corrigidos pontualmente em `src/lib/ai.server.ts` e `src/routes/api/chat.ts`, sem mudança de comportamento. `AGENTS.md` documenta a operação de pagamento; `roadmap.md` acompanha as pendências. Este relatório foi atualizado sem apagar o registro histórico.
+- Nenhuma alteração em tipos/chave do store, formatos de backup, componentes visuais, rotas geradas ou dependências. A observação sobre progresso de peso não se confirmou como defeito: já existe limite entre 0 e 100; nenhuma mudança foi feita nessa regra.
+
+### Resultados reais desta rodada
+- `bunx vitest run`: **18 testes passaram em seis arquivos**, após correções. Inclui confirmação das propostas, validação de requisições, backups legados, falha de armazenamento, hábitos e pagamentos.
+- `bun run lint`: **zero erros, seis avisos** de Fast Refresh nos componentes existentes.
+- Último registro automático consultado: **build OK**, 19/10/2026 12:37:06 UTC. Não foram executados build nem typecheck manuais, por restrição do ambiente. Não há resultado separado de TypeScript nem build da Vercel confirmado nesta rodada.
+- Navegador desktop 1280×1800: sete páginas retornaram 200 com títulos próprios, nenhuma exceção de página e nenhum dado pessoal acessado. A captura do assistente foi conferida.
+- Navegador celular 411×665: criar dívida de R$ 300, pagar R$ 100, rejeitar R$ 250 sem alteração do JSON, recarregar e consultar saldo de R$ 200 e exatamente uma despesa de R$ 100. Captura conferida após as transições.
+- Backup exportado e restaurado pelos controles reais: JSON gravado idêntico. Depois foi restaurado um arquivo de teste com metas financeira e de saúde, tarefa, hábito, plano e histórico de treino. Meta, tarefa, hábito e plano apareceram nas respectivas páginas; todos os registros, inclusive saúde e histórico, permaneceram idênticos após navegação e recarga. Sem rolagem horizontal nas páginas verificadas com esses dados.
+- Os testes de todos os formulários de criação/edição/exclusão dos módulos, feitos na auditoria histórica abaixo, **não foram repetidos integralmente** nesta rodada. Leitura de dados restaurados não equivale a repetir todos esses fluxos.
+- A chave Gemini está ausente neste ambiente; não houve inferência real. Os testes de servidor usam simulações explícitas, não respostas reais. Não foram sondados ou trocados modelos.
+
+### Segurança e verificações bloqueadas
+- Os resultados consultados em `security.get_scan_results` estão desatualizados (17–18/10), sem achados listados e sem análise profunda recente. Isso não demonstra ausência de vulnerabilidades. É necessária nova análise pela aba Segurança; não se declara o aplicativo seguro.
+- Varredura de segredos versionados/históricos e segurança da Vercel permanecem não verificadas nesta rodada. Nenhuma credencial foi adicionada, rotacionada ou revogada.
+- No caminho atual, `GEMINI_API_KEY` é passada explicitamente a `createGoogleGenerativeAI` dentro do handler; `GOOGLE_GENERATIVE_AI_API_KEY` não é necessária para esse caminho. `GEMINI_MODEL` é opcional. Na Vercel, conferir ambiente, branch e deployment efetivamente atendendo o chat; valores não devem ir a variáveis públicas.
+- Não há primitiva padrão de limitação global neste ambiente. Não foi criado contador em memória nem contratado serviço. Proteção compartilhada depende da confirmação dos recursos disponíveis da Vercel/provedor e de autorização específica caso exija mudança arquitetural. Limites de corpo/histórico não equivalem a limitação de frequência.
+- Sem login próprio ou sincronização entre dispositivos; dados continuam no aparelho. Não foi verificada existência de notificações do sistema, apenas preservada a estrutura existente.
+
+## Registro histórico da auditoria anterior
+
 ## Escopo e evidências
 
 Projeto real inspecionado no ambiente Lovable. Não foi possível consultar a configuração, logs ou deployment externo da Vercel, nem confirmar a branch/commit do GitHub em produção. Não houve merge, publicação ou alteração dos dados do usuário: os testes de navegador usaram um contexto isolado com dados criados pela própria interface.
