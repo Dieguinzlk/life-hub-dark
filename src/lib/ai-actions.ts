@@ -1,4 +1,4 @@
-import { brl, fmtDate, today, uid, update, getGoalSavedAmount, type AppData, type Exercise, type Priority, type Contribution } from "@/lib/store";
+import { brl, fmtDate, today, uid, update, getGoalSavedAmount, type AppData, type Exercise, type Priority, type Contribution, type FinancialPlan } from "@/lib/store";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Input = any;
@@ -113,6 +113,27 @@ export function prepareAction(name: string, input: Input, data: AppData): Prepar
         },
       };
     }
+    case "create_financial_plan": {
+      const plan: FinancialPlan = {
+        income: pos(input.income, "Renda mensal"),
+        targetMonths: pos(input.targetMonths, "Prazo em meses"),
+        essentialLimit: pos(input.essentialLimit, "Teto essencial"),
+        wantsLimit: pos(input.wantsLimit, "Teto lazer"),
+        savingsLimit: pos(input.savingsLimit, "Teto reservas/dívidas"),
+        debtPayoffMonthly: nonneg(input.debtPayoffMonthly, "Aporte dívidas"),
+        reserveMonthly: nonneg(input.reserveMonthly, "Aporte reserva"),
+        strategies: Array.isArray(input.strategies) ? input.strategies.map((s: unknown) => str(s, "Estratégia")) : [],
+        createdAt: today(),
+      };
+
+      return {
+        summary: `Aplicar Plano Financeiro de ${plan.targetMonths} meses: Essenciais (${brl(plan.essentialLimit)}), Lazer (${brl(plan.wantsLimit)}), Dívidas/Reserva (${brl(plan.savingsLimit)})`,
+        apply: () => {
+          update((d) => ({ ...d, financialPlan: plan }));
+          return "Plano financeiro salvo com sucesso!";
+        },
+      };
+    }
     case "add_health_goal": {
       const cats = ["peso", "treinos", "habito", "outra"] as const;
       const category = cats.find((c) => c === input.category) ?? "outra";
@@ -144,7 +165,7 @@ export function prepareAction(name: string, input: Input, data: AppData): Prepar
     case "log_workout": {
       const plan = data.plans.find((p) => p.id === input.planId) ?? bad("Plano não encontrado");
       const notes = typeof input.notes === "string" && input.notes.trim() ? input.notes.trim() : undefined;
-      const log = { id: uid(), planId: plan.id, planName: plan.name, date: dateOr(input.date), exercises: plan.exercises.map((e) => ({ ...e })), ...(notes ? { notes } : {}) };
+      const log = { id: uid(), planId: plan.id, planName: plan.name, date: dateOr(input.date), exercises: plan.plans?.exercises ? plan.exercises.map((e) => ({ ...e })) : [], ...(notes ? { notes } : {}) };
       return {
         summary: `Registrar treino "${plan.name}" em ${fmtDate(log.date)}`,
         apply: () => (update((d) => ({ ...d, workoutLogs: [log, ...d.workoutLogs] })), "Treino registrado"),
@@ -166,6 +187,7 @@ export function buildSnapshot(d: AppData) {
     ultimosLancamentos: d.transactions.slice(0, 30).map(({ type, description, amount, category, date }) => ({ type, description, amount, category, date })),
     contasPendentes: d.bills.filter((b) => !b.paid).map(({ description, amount, dueDate }) => ({ description, amount, dueDate })),
     dividas: d.debts.map(({ name, total, paid }) => ({ name, total, paid })),
+    planoFinanceiroEstrategico: d.financialPlan ?? null,
     tarefasPendentes: d.tasks.filter((t) => !t.done).slice(0, 50).map(({ id, title, date, time, priority }) => ({ id, title, date, time, priority })),
     habitos: d.habits.map((h) => h.name),
     planos: d.plans.map((p) => ({ id: p.id, name: p.name, exercises: p.exercises.map((e: Exercise) => `${e.name} ${e.sets}x${e.reps}${e.weight ? ` ${e.weight}kg` : ""}`) })),
