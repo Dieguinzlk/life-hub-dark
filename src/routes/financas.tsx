@@ -277,7 +277,9 @@ function FinancialPlanView({ plan, transactions }: { plan: any; transactions: an
           <p className="text-xs text-muted-foreground">Previsão de conclusão do plano em <span className="font-semibold text-foreground">{plan.targetMonths} meses</span>.</p>
 
           <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between p-3 rounded-xl border bg-secondary/30 text-sm">                <p className="font-medium">Aporte Mensal de Dívidas</p>
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-secondary/30 text-sm">
+              <div>
+                <p className="font-medium">Aporte Mensal de Dívidas</p>
                 <p className="text-xs text-muted-foreground">Todo dia 5 de cada mês</p>
               </div>
               <span className="font-bold text-emerald-400">{brl(plan.debtPayoffMonthly)}</span>
@@ -557,7 +559,7 @@ function NewDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange: (
     setAmount("");
     setDate(today());
     onOpenChange(false);
-      }
+  }
 
   const titles = { receita: "Nova receita", despesa: "Nova despesa", conta: "Nova conta a pagar", divida: "Nova dívida" };
 
@@ -592,7 +594,6 @@ function NewDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange: (
     </Dialog>
   );
 }
-
 
 function BusinessPanel() {
   const data = useData() as any;
@@ -837,7 +838,7 @@ function BusinessPanel() {
                         : "border-muted-foreground"
                     }`}
                   >
-                                        {bill.paid && <Check className="h-4 w-4" />}
+                    {bill.paid && <Check className="h-4 w-4" />}
                   </button>
 
                   <div className="min-w-0 flex-1">
