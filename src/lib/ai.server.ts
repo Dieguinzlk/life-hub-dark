@@ -61,6 +61,20 @@ export const tools = {
     }),
     outputSchema: out,
   }),
+  create_financial_plan: tool({
+    description: "Criar ou atualizar o plano estratégico financeiro com tetos de gastos (ex: 50/30/20), prazo em meses e estratégias práticas",
+    inputSchema: z.object({
+      income: z.number().describe("Renda mensal considerada em BRL"),
+      targetMonths: z.number().describe("Prazo em meses estipulado para a conclusão do plano"),
+      essentialLimit: z.number().describe("Teto mensal para despesas essenciais (ex: 50%)"),
+      wantsLimit: z.number().describe("Teto mensal para desejos/lazer (ex: 30%)"),
+      savingsLimit: z.number().describe("Valor mensal para reservas/dívidas/investimentos (ex: 20%)"),
+      debtPayoffMonthly: z.number().describe("Valor mensal direcionado para dívidas"),
+      reserveMonthly: z.number().describe("Valor mensal direcionado para reserva"),
+      strategies: z.array(z.string()).describe("Passos práticos da estratégia criada"),
+    }),
+    outputSchema: out,
+  }),
   add_health_goal: tool({
     description: "Criar uma meta de saúde (peso, treinos, hábito ou outra)",
     inputSchema: z.object({
@@ -121,6 +135,7 @@ export async function handleChat(request: Request): Promise<Response> {
   const instructions = [
     "Você é o assistente do app Gerenciador de Vida. Responda sempre em português do Brasil, de forma curta, direta e prática.",
     "Ajude com rotina, tarefas, finanças (valores em BRL), hábitos, metas e treinos.",
+    "Ao propor um plano de organização financeira (ex: regra 50/30/20), se o usuário não tiver informado em quanto tempo deseja concluir/organizar, pergunte em quanto tempo (quantos meses) ele gostaria de realizar esse plano antes de chamar a ferramenta `create_financial_plan`.",
     "Quando o usuário pedir para criar/registrar/alterar algo, use as ferramentas. Cada ação é confirmada pelo usuário no aparelho antes de ser salva; não diga que salvou antes de receber o resultado.",
     "Se faltar uma informação essencial (ex.: valor de uma despesa), pergunte antes de chamar a ferramenta.",
     `Hoje é ${today}. Use datas no formato AAAA-MM-DD.`,
