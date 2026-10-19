@@ -17,7 +17,7 @@ export const Route = createFileRoute("/financas")({
   component: Financas,
 });
 
-type Tab = "lancamentos" | "contas" | "dividas" | "metas" | "plano";
+type Tab = "lancamentos" | "contas" | "dividas" | "metas" | "planos";
 const CATS = ["Alimentação", "Moradia", "Transporte", "Saúde", "Lazer", "Educação", "Salário", "Outros"];
 const field = "h-12 w-full rounded-xl border bg-input/40 px-3 text-base outline-none focus:border-primary";
 
@@ -40,7 +40,7 @@ function Financas() {
     ["contas", "Contas"],
     ["dividas", "Dívidas"],
     ["metas", "Metas"],
-    ["plano", "Plano 50/30/20"],
+    ["planos", "Planos"],
   ];
 
   return (
@@ -48,7 +48,7 @@ function Financas() {
       title="Finanças"
       subtitle="Seu dinheiro sob controle"
       action={
-        tab !== "metas" && tab !== "plano" ? (
+        tab !== "metas" && tab !== "planos" ? (
           <button onClick={() => setOpen(true)} className="shadow-glow flex h-11 items-center gap-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground">
             <Plus className="h-5 w-5" /> Novo
           </button>
@@ -157,11 +157,11 @@ function Financas() {
         <FinanceGoals />
       )}
 
-      {tab === "plano" && (
+      {tab === "planos" && (
         <FinancialPlanView plan={data.financialPlan} transactions={data.transactions} />
       )}
 
-      <NewDialog open={open && tab !== "metas" && tab !== "plano"} onOpenChange={setOpen} tab={tab === "contas" || tab === "dividas" ? tab : "lancamentos"} />
+      <NewDialog open={open && tab !== "metas" && tab !== "planos"} onOpenChange={setOpen} tab={tab === "contas" || tab === "dividas" ? tab : "lancamentos"} />
       <FinanceGoalDialog open={open && tab === "metas"} onOpenChange={setOpen} />
     </Page>
   );
@@ -183,7 +183,6 @@ function FinancialPlanView({ plan, transactions }: { plan: any; transactions: an
     );
   }
 
-  // Cálculos reais do mês atual para o gráfico comparativo
   const month = today().slice(0, 7);
   const monthTx = transactions.filter((t) => t.date.startsWith(month) && t.type === "despesa");
   const totalSpent = monthTx.reduce((acc, t) => acc + t.amount, 0);
@@ -201,7 +200,6 @@ function FinancialPlanView({ plan, transactions }: { plan: any; transactions: an
           </span>
         </div>
 
-        {/* Abas internas do Plano */}
         <div className="mt-4 flex gap-2 rounded-xl bg-secondary p-1 text-xs font-medium">
           <button 
             onClick={() => setSubTab("grafico")} 
@@ -224,7 +222,6 @@ function FinancialPlanView({ plan, transactions }: { plan: any; transactions: an
         </div>
       </Card>
 
-      {/* 1. Gráfico de Pizza / Tetos 50/30/20 */}
       {subTab === "grafico" && (
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
@@ -267,7 +264,6 @@ function FinancialPlanView({ plan, transactions }: { plan: any; transactions: an
         </Card>
       )}
 
-      {/* 2. Calendário de Execução / Prazos */}
       {subTab === "calendario" && (
         <Card className="space-y-3">
           <h4 className="font-semibold">Cronograma de Aportes & Prazos</h4>
@@ -293,7 +289,6 @@ function FinancialPlanView({ plan, transactions }: { plan: any; transactions: an
         </Card>
       )}
 
-      {/* 3. Passos Práticos do Plano */}
       {subTab === "passos" && (
         <Card className="space-y-3">
           <h4 className="font-semibold">Passos da Estratégia Prática</h4>
