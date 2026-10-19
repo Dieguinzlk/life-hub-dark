@@ -1,7 +1,6 @@
-
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Trash2, Check, Target, PiggyBank, TrendingUp } from "lucide-react";
+import { Plus, Trash2, Check, Target, PiggyBank, TrendingUp, PieChart as PieChartIcon, Calendar as CalendarIcon, CheckCircle2 } from "lucide-react";
 import { Page, Card } from "@/components/AppShell";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useData, update, uid, today, brl, fmtDate } from "@/lib/store";
@@ -18,7 +17,7 @@ export const Route = createFileRoute("/financas")({
   component: Financas,
 });
 
-type Tab = "lancamentos" | "contas" | "dividas" | "metas";
+type Tab = "lancamentos" | "contas" | "dividas" | "metas" | "plano";
 const CATS = ["Alimentação", "Moradia", "Transporte", "Saúde", "Lazer", "Educação", "Salário", "Outros"];
 const field = "h-12 w-full rounded-xl border bg-input/40 px-3 text-base outline-none focus:border-primary";
 
@@ -41,6 +40,7 @@ function Financas() {
     ["contas", "Contas"],
     ["dividas", "Dívidas"],
     ["metas", "Metas"],
+    ["plano", "Plano 50/30/20"],
   ];
 
   return (
@@ -48,20 +48,20 @@ function Financas() {
       title="Finanças"
       subtitle="Seu dinheiro sob controle"
       action={
-        tab !== "metas" ? (
+        tab !== "metas" && tab !== "plano" ? (
           <button onClick={() => setOpen(true)} className="shadow-glow flex h-11 items-center gap-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground">
             <Plus className="h-5 w-5" /> Novo
           </button>
-        ) : (
+        ) : tab === "metas" ? (
           <button onClick={() => setOpen(true)} className="shadow-glow flex h-11 items-center gap-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground">
             <Plus className="h-5 w-5" /> Meta
           </button>
-        )
+        ) : null
       }
     >
-      <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-5">
         {tabs.map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-lg py-2 text-sm font-semibold ${tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+          <button key={k} onClick={() => setTab(k)} className={`rounded-lg py-2 text-xs sm:text-sm font-semibold ${tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             {l}
           </button>
         ))}
@@ -157,9 +157,157 @@ function Financas() {
         <FinanceGoals />
       )}
 
-      <NewDialog open={open && tab !== "metas"} onOpenChange={setOpen} tab={tab === "contas" || tab === "dividas" ? tab : "lancamentos"} />
+      {tab === "plano" && (
+        <FinancialPlanView plan={data.financialPlan} transactions={data.transactions} />
+      )}
+
+      <NewDialog open={open && tab !== "metas" && tab !== "plano"} onOpenChange={setOpen} tab={tab === "contas" || tab === "dividas" ? tab : "lancamentos"} />
       <FinanceGoalDialog open={open && tab === "metas"} onOpenChange={setOpen} />
     </Page>
+  );
+}
+
+function FinancialPlanView({ plan, transactions }: { plan: any; transactions: any[] }) {
+  const [subTab, setSubTab] = useState<"grafico" | "calendario" | "passos">("grafico");
+
+  if (!plan) {
+    return (
+      <Card className="py-12 text-center">
+        <Target className="mx-auto mb-3 h-12 w-12 text-primary" />
+        <h2 className="mb-2 text-lg font-bold">Nenhum plano estratégico ativo</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Vá até o chat com o assistente e peça: <br />
+          <span className="font-semibold text-foreground">“Me ajude a me organizar com a regra 50/30/20”</span>
+        </p>
+      </Card>
+    );
+  }
+
+  // Cálculos reais do mês atual para o gráfico comparativo
+  const month = today().slice(0, 7);
+  const monthTx = transactions.filter((t) => t.date.startsWith(month) && t.type === "despesa");
+  const totalSpent = monthTx.reduce((acc, t) => acc + t.amount, 0);
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-emerald-500/30 bg-card/60 backdrop-blur">
+        <div className="flex items-center justify-between border-b pb-3">
+          <div>
+            <h3 className="font-bold text-foreground">Plano Estratégico ({plan.targetMonths} Meses)</h3>
+            <p className="text-xs text-muted-foreground">Renda base: {brl(plan.income)}</p>
+          </div>
+          <span className="rounded-full bg-emerald-500/10 text-emerald-400 px-3 py-1 text-xs font-semibold">
+            {plan.targetMonths} Meses
+          </span>
+        </div>
+
+        {/* Abas internas do Plano */}
+        <div className="mt-4 flex gap-2 rounded-xl bg-secondary p-1 text-xs font-medium">
+          <button 
+            onClick={() => setSubTab("grafico")} 
+            className={`flex items-center justify-center gap-1.5 flex-1 rounded-lg py-2 transition ${subTab === "grafico" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+          >
+            <PieChartIcon className="h-4 w-4" /> Pizza 50/30/20
+          </button>
+          <button 
+            onClick={() => setSubTab("calendario")} 
+            className={`flex items-center justify-center gap-1.5 flex-1 rounded-lg py-2 transition ${subTab === "calendario" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+          >
+            <CalendarIcon className="h-4 w-4" /> Calendário
+          </button>
+          <button 
+            onClick={() => setSubTab("passos")} 
+            className={`flex items-center justify-center gap-1.5 flex-1 rounded-lg py-2 transition ${subTab === "passos" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+          >
+            <CheckCircle2 className="h-4 w-4" /> Estratégias
+          </button>
+        </div>
+      </Card>
+
+      {/* 1. Gráfico de Pizza / Tetos 50/30/20 */}
+      {subTab === "grafico" && (
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold">Distribuição do Orçamento Mensal</h4>
+            <span className="text-xs text-muted-foreground">Total Gasto: {brl(totalSpent)}</span>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <div className="mb-1 flex justify-between text-sm">
+                <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-blue-500" /> 50% Essenciais (Teto)</span>
+                <span className="font-semibold">{brl(plan.essentialLimit)}</span>
+              </div>
+              <div className="h-3 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, (totalSpent / plan.essentialLimit) * 100)}%` }} />
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-1 flex justify-between text-sm">
+                <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-purple-500" /> 30% Desejos/Lazer (Teto)</span>
+                <span className="font-semibold">{brl(plan.wantsLimit)}</span>
+              </div>
+              <div className="h-3 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full bg-purple-500 rounded-full" style={{ width: `${Math.min(100, (totalSpent / plan.wantsLimit) * 100)}%` }} />
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-1 flex justify-between text-sm">
+                <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-emerald-500" /> 20% Dívidas & Reservas</span>
+                <span className="font-semibold">{brl(plan.savingsLimit)}</span>
+              </div>
+              <div className="text-xs text-muted-foreground flex justify-between mt-1">
+                <span>Dívidas: {brl(plan.debtPayoffMonthly)}/mês</span>
+                <span>Reserva: {brl(plan.reserveMonthly)}/mês</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* 2. Calendário de Execução / Prazos */}
+      {subTab === "calendario" && (
+        <Card className="space-y-3">
+          <h4 className="font-semibold">Cronograma de Aportes & Prazos</h4>
+          <p className="text-xs text-muted-foreground">Previsão de conclusão do plano em <span className="font-semibold text-foreground">{plan.targetMonths} meses</span>.</p>
+          
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-secondary/30 text-sm">
+              <div>
+                <p className="font-medium">Aporte Mensal de Dívidas</p>
+                <p className="text-xs text-muted-foreground">Todo dia 5 de cada mês</p>
+              </div>
+              <span className="font-bold text-emerald-400">{brl(plan.debtPayoffMonthly)}</span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl border bg-secondary/30 text-sm">
+              <div>
+                <p className="font-medium">Aporte na Reserva de Emergência</p>
+                <p className="text-xs text-muted-foreground">Todo dia 10 de cada mês</p>
+              </div>
+              <span className="font-bold text-emerald-400">{brl(plan.reserveMonthly)}</span>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* 3. Passos Práticos do Plano */}
+      {subTab === "passos" && (
+        <Card className="space-y-3">
+          <h4 className="font-semibold">Passos da Estratégia Prática</h4>
+          <div className="space-y-2 text-xs">
+            {plan.strategies.map((step: string, idx: number) => (
+              <div key={idx} className="flex gap-2.5 items-start p-3 rounded-xl border bg-secondary/30">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-bold text-emerald-400">{idx + 1}</span>
+                <p className="text-foreground leading-relaxed">{step}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
   );
 }
 
