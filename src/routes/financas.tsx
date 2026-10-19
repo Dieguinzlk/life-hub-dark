@@ -1,419 +1,159 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Plus, Trash2, Check, Target, PiggyBank, TrendingUp, Pencil } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { money, roundMoney } from "@/lib/data-validation";
-import { recordDebtPayment } from "@/lib/debt-payment";
-import type { FinanceGoal } from "@/lib/store";
-import { Page, Card } from "@/components/AppShell";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useData, update, uid, today, brl, fmtDate } from "@/lib/store";
-
-export const Route = createFileRoute("/financas")({
-  head: () => ({
-    meta: [
-      { title: "Finanças — Gerenciador de Vida" },
-      {
-        name: "description",
-        content: "Controle receitas, despesas, contas, dívidas, metas e negócio.",
-      },
-      { property: "og:title", content: "Finanças — Gerenciador de Vida" },
-      { property: "og:description", content: "Controle suas finanças, metas e negócio." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Financas,
-});
-
-type Tab =
-  | "lancamentos"
-  | "contas"
-  | "dividas"
-  | "metas"
-  | "negocio";
-
-type BusinessSubTab = "vendas" | "gastos" | "contas";
-
-const CATS = [
-  "Alimentação",
-  "Moradia",
-  "Transporte",
-  "Saúde",
-  "Lazer",
-  "Educação",
-  "Salário",
-  "Outros",
-];
-
-const BIZ_CATS = [
-  "Fornecedores",
-  "Estoque",
-  "Marketing",
-  "Taxas e Impostos",
-  "Equipamentos",
-  "Outros",
-];
-
-const field =
-  "h-12 w-full rounded-xl border bg-input/40 px-3 text-base outline-none focus:border-primary";
-
-export function Financas({
-  initialTab = "lancamentos",
-  goalsPage = false,
-}: {
-  initialTab?: Tab;
-  goalsPage?: boolean;
-}) {
+function BusinessPanel() {
   const data = useData() as any;
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const [subTab, setSubTab] = useState<BusinessSubTab>("vendas");
   const [open, setOpen] = useState(false);
   const month = today().slice(0, 7);
   const [filterMonth, setFilterMonth] = useState(month);
 
-  const tx = (data.transactions || [])
-    .filter((x: any) => x.date.startsWith(filterMonth))
-    .sort((a: any, b: any) => b.date.localeCompare(a.date));
-  const inc = tx.filter((x: any) => x.type === "receita").reduce((s: number, x: any) => s + x.amount, 0);
-  const exp = tx.filter((x: any) => x.type === "despesa").reduce((s: number, x: any) => s + x.amount, 0);
-  const byCat = Object.entries(
-    tx
-      .filter((x: any) => x.type === "despesa")
-      .reduce<Record<string, number>>(
-        (acc: any, x: any) => ((acc[x.category] = (acc[x.category] || 0) + x.amount), acc),
-        {},
-      ),
-  ).sort((a: any, b: any) => b[1] - a[1]);
-
-  const tabs: [Tab, string][] = [
-    ["lancamentos", "Lançamentos"],
-    ["contas", "Contas"],
-    ["dividas", "Dívidas"],
-    ["metas", "Metas"],
-    ["negocio", "Negócio"],
-  ];
-
-  return (
-    <Page
-      title={goalsPage ? "Metas" : "Finanças"}
-      subtitle="Seu dinheiro e negócio sob controle"
-      action={
-        tab !== "metas" ? (
-          <button
-            onClick={() => setOpen(true)}
-            className="shadow-glow flex h-11 items-center gap-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
-          >
-            <Plus className="h-5 w-5" /> Novo
-          </button>
-        ) : (
-          <button
-            onClick={() => setOpen(true)}
-            className="shadow-glow flex h-11 items-center gap-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
-          >
-            <Plus className="h-5 w-5" /> Meta
-          </button>
-        )
-      }
-    >
-      {!goalsPage && (
-        <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-3 lg:grid-cols-5">
-          {tabs.map(([k, l]) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`rounded-lg py-2 text-sm font-semibold ${tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {tab === "lancamentos" && (
-        <>
-          <input
-            type="month"
-            value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value || month)}
-            className={`${field} mb-3`}
-          />
-          <div className="mb-4 grid grid-cols-3 gap-2 text-center">
-            <Card className="p-3">
-              <p className="text-xs text-muted-foreground">Receitas</p>
-              <p className="text-sm font-semibold text-success">{brl(inc)}</p>
-            </Card>
-            <Card className="p-3">
-              <p className="text-xs text-muted-foreground">Despesas</p>
-              <p className="text-sm font-semibold text-destructive">{brl(exp)}</p>
-            </Card>
-            <Card className="p-3">
-              <p className="text-xs text-muted-foreground">Saldo</p>
-              <p className="text-sm font-semibold">{brl(inc - exp)}</p>
-            </Card>
-          </div>
-          {byCat.length > 0 && (
-            <Card className="mb-4">
-              <h2 className="mb-3 font-semibold">Gastos por categoria</h2>
-              <div className="space-y-2">
-                {byCat.map(([c, v]: [string, any]) => (
-                  <div key={c}>
-                    <div className="mb-1 flex justify-between text-sm">
-                      <span>{c}</span>
-                      <span className="text-muted-foreground">{brl(v)}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-secondary">
-                      <div
-                        className="h-2 rounded-full bg-primary"
-                        style={{ width: `${exp ? (v / exp) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-          <Card>
-            {tx.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nenhum lançamento neste mês. Toque em “Novo”.
-              </p>
-            )}
-            <ul className="divide-y">
-              {tx.map((x: any) => (
-                <li key={x.id} className="flex items-center gap-3 py-3">
-                  <div className="flex-1">
-                    <p className="font-medium">{x.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {x.category} · {fmtDate(x.date)}
-                    </p>
-                  </div>
-                  <span
-                    className={`font-semibold ${x.type === "receita" ? "text-success" : "text-destructive"}`}
-                  >
-                    {x.type === "receita" ? "+" : "−"}
-                    {brl(x.amount)}
-                  </span>
-                  <Del
-                    onClick={() =>
-                      update((d: any) => ({
-                        ...d,
-                        transactions: (d.transactions || []).filter((y: any) => y.id !== x.id),
-                      }))
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </>
-      )}
-
-      {tab === "contas" && (
-        <Card>
-          {(data.bills || []).length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhuma conta cadastrada.</p>
-          )}
-          <ul className="divide-y">
-            {[...(data.bills || [])]
-              .sort((a: any, b: any) => Number(a.paid) - Number(b.paid) || a.dueDate.localeCompare(b.dueDate))
-              .map((b: any) => {
-                const late = !b.paid && b.dueDate < today();
-                return (
-                  <li key={b.id} className="flex items-center gap-3 py-3">
-                    <button
-                      aria-label="Marcar como paga"
-                      onClick={() =>
-                        update((d: any) => {
-                          const paying = !b.paid;
-                          return {
-                            ...d,
-                            bills: (d.bills || []).map((y: any) => (y.id === b.id ? { ...y, paid: paying } : y)),
-                            transactions: paying
-                              ? [
-                                  ...(d.transactions || []),
-                                  {
-                                    id: "bill-" + b.id,
-                                    type: "despesa",
-                                    description: b.description,
-                                    amount: b.amount,
-                                    category: "Contas",
-                                    date: today(),
-                                  },
-                                ]
-                              : (d.transactions || []).filter((t: any) => t.id !== "bill-" + b.id),
-                          };
-                        })
-                      }
-                      className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 ${b.paid ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"}`}
-                    >
-                      {b.paid && <Check className="h-4 w-4" />}
-                    </button>
-                    <div className="flex-1">
-                      <p
-                        className={`font-medium ${b.paid ? "text-muted-foreground line-through" : ""}`}
-                      >
-                        {b.description}
-                      </p>
-                      <p
-                        className={`text-xs ${late ? "text-destructive" : "text-muted-foreground"}`}
-                      >
-                        {late ? "Atrasada · " : "Vence "}
-                        {fmtDate(b.dueDate)}
-                      </p>
-                    </div>
-                    <span className="font-semibold">{brl(b.amount)}</span>
-                    <Del
-                      onClick={() =>
-                        update((d: any) => ({ ...d, bills: (d.bills || []).filter((y: any) => y.id !== b.id) }))
-                      }
-                    />
-                  </li>
-                );
-              })}
-          </ul>
-          {(data.bills || []).length > 0 && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Ao marcar como paga, a despesa é lançada automaticamente.
-            </p>
-          )}
-        </Card>
-      )}
-
-      {tab === "dividas" && (
-        <div className="space-y-3">
-          {(data.debts || []).length === 0 && (
-            <Card>
-              <p className="text-sm text-muted-foreground">Nenhuma dívida cadastrada. Ótimo! 🎉</p>
-            </Card>
-          )}
-          {(data.debts || []).map((d: any) => (
-            <DebtCard key={d.id} debt={d} />
-          ))}
-        </div>
-      )}
-
-      {tab === "metas" && <FinanceGoals />}
-
-      {tab === "negocio" && <BusinessPanel />}
-
-      {tab !== "negocio" && (
-        <NewDialog
-          open={open && tab !== "metas"}
-          onOpenChange={setOpen}
-          tab={tab === "contas" || tab === "dividas" ? tab : "lancamentos"}
-        />
-      )}
-
-      <FinanceGoalDialog open={open && tab === "metas"} onOpenChange={setOpen} />
-      <BusinessDialog open={open && tab === "negocio"} onOpenChange={setOpen} />
-    </Page>
+  const sales = (data.businessSales || []).filter(
+    (x: any) => x.date?.startsWith(filterMonth),
   );
-}
 
-function BusinessPanel() {
-  const data = useData() as any;
-  const [subTab, setSubTab] = useState<BusinessSubTab>("vendas");
-  const month = today().slice(0, 7);
-  const [filterMonth, setFilterMonth] = useState(month);
+  const expenses = (data.businessCosts || []).filter(
+    (x: any) => x.date?.startsWith(filterMonth),
+  );
 
-  const sales = (data.businessSales || []).filter((x: any) => x.date.startsWith(filterMonth));
-  const expenses = (data.businessExpenses || []).filter((x: any) => x.date.startsWith(filterMonth));
-  const bizBills = data.businessBills || [];
+  const bizBills = data.businessPayables || [];
 
-  const totalSold = sales.reduce((s: number, x: any) => s + x.price * x.quantity, 0);
-  const totalReceived = sales.filter((x: any) => x.paid).reduce((s: number, x: any) => s + x.price * x.quantity, 0);
-  const totalExpenses = expenses.reduce((s: number, x: any) => s + x.amount, 0);
+  const totalSold = sales.reduce(
+    (sum: number, sale: any) =>
+      sum + Number(sale.total ?? Number(sale.unitPrice || 0) * Number(sale.quantity || 1)),
+    0,
+  );
+
+  const totalReceived = sales
+    .filter((sale: any) => sale.received)
+    .reduce(
+      (sum: number, sale: any) =>
+        sum + Number(sale.total ?? Number(sale.unitPrice || 0) * Number(sale.quantity || 1)),
+      0,
+    );
+
+  const totalExpenses = expenses.reduce(
+    (sum: number, expense: any) => sum + Number(expense.amount || 0),
+    0,
+  );
+
   const netProfit = totalReceived - totalExpenses;
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Card className="p-3">
+          <p className="text-xs text-muted-foreground">Vendas</p>
+          <p className="font-semibold">{brl(totalSold)}</p>
+        </Card>
+        <Card className="p-3">
+          <p className="text-xs text-muted-foreground">Recebido</p>
+          <p className="font-semibold text-success">{brl(totalReceived)}</p>
+        </Card>
+        <Card className="p-3">
+          <p className="text-xs text-muted-foreground">Gastos</p>
+          <p className="font-semibold text-destructive">{brl(totalExpenses)}</p>
+        </Card>
+        <Card className="p-3">
+          <p className="text-xs text-muted-foreground">Saldo recebido</p>
+          <p className="font-semibold">{brl(netProfit)}</p>
+        </Card>
+      </div>
+
       <input
         type="month"
         value={filterMonth}
         onChange={(e) => setFilterMonth(e.target.value || month)}
         className={field}
+        aria-label="Filtrar negócio por mês"
       />
 
-      <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-        <Card className="p-3">
-          <p className="text-xs text-muted-foreground">Vendido</p>
-          <p className="text-sm font-semibold text-primary">{brl(totalSold)}</p>
-        </Card>
-        <Card className="p-3">
-          <p className="text-xs text-muted-foreground">Recebido</p>
-          <p className="text-sm font-semibold text-success">{brl(totalReceived)}</p>
-        </Card>
-        <Card className="p-3">
-          <p className="text-xs text-muted-foreground">Gastos</p>
-          <p className="text-sm font-semibold text-destructive">{brl(totalExpenses)}</p>
-        </Card>
-        <Card className="p-3">
-          <p className="text-xs text-muted-foreground">Resultado</p>
-          <p className={`text-sm font-semibold ${netProfit >= 0 ? "text-success" : "text-destructive"}`}>
-            {brl(netProfit)}
-          </p>
-        </Card>
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
+        {(["vendas", "gastos", "contas"] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setSubTab(key)}
+            className={`rounded-lg py-2 text-sm font-semibold ${
+              subTab === key
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground"
+            }`}
+          >
+            {key === "vendas" ? "Vendas" : key === "gastos" ? "Gastos" : "Contas"}
+          </button>
+        ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
+      <div className="flex justify-end">
         <button
-          onClick={() => setSubTab("vendas")}
-          className={`rounded-lg py-2 text-xs font-semibold ${subTab === "vendas" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex h-11 items-center gap-2 rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
         >
-          Vendas
-        </button>
-        <button
-          onClick={() => setSubTab("gastos")}
-          className={`rounded-lg py-2 text-xs font-semibold ${subTab === "gastos" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-        >
-          Gastos
-        </button>
-        <button
-          onClick={() => setSubTab("contas")}
-          className={`rounded-lg py-2 text-xs font-semibold ${subTab === "contas" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-        >
-          Contas
+          <Plus className="h-5 w-5" />
+          Novo registro
         </button>
       </div>
 
       {subTab === "vendas" && (
         <Card>
           {sales.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhuma venda registrada neste mês.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhuma venda registrada neste mês.
+            </p>
           )}
+
           <ul className="divide-y">
-            {sales.map((s: any) => {
-              const totalVal = s.price * s.quantity;
+            {sales.map((sale: any) => {
+              const quantity = Number(sale.quantity || 1);
+              const unitPrice = Number(sale.unitPrice || 0);
+              const total = Number(sale.total ?? unitPrice * quantity);
+
               return (
-                <li key={s.id} className="flex items-center gap-3 py-3">
-                  <button
-                    aria-label="Marcar como recebido"
-                    onClick={() =>
-                      update((d: any) => ({
-                        ...d,
-                        businessSales: (d.businessSales || []).map((item: any) =>
-                          item.id === s.id ? { ...item, paid: !item.paid } : item
-                        ),
-                      }))
-                    }
-                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 ${s.paid ? "border-success bg-success text-success-foreground" : "border-muted-foreground"}`}
-                  >
-                    {s.paid && <Check className="h-4 w-4 text-white" />}
-                  </button>
-                  <div className="flex-1">
-                    <p className="font-medium">{s.product} ({s.quantity}x)</p>
+                <li key={sale.id} className="flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words font-medium">{sale.product}</p>
                     <p className="text-xs text-muted-foreground">
-                      Cliente: {s.client || "Geral"} · {fmtDate(s.date)}
+                      {quantity} × {brl(unitPrice)}
+                      {sale.customer ? ` · ${sale.customer}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {fmtDate(sale.date)}
+                    </p>
+                    <p
+                      className={`mt-1 text-xs font-medium ${
+                        sale.received ? "text-success" : "text-destructive"
+                      }`}
+                    >
+                      {sale.received ? "Recebido" : "Pendente"}
                     </p>
                   </div>
-                  <span className={`font-semibold ${s.paid ? "text-success" : ""}`}>
-                    {brl(totalVal)}
-                  </span>
+
+                  <div className="text-right">
+                    <p className="font-semibold">{brl(total)}</p>
+                    <button
+                      type="button"
+                      className="mt-1 text-xs text-primary underline"
+                      onClick={() =>
+                        update((d: any) => ({
+                          ...d,
+                          businessSales: (d.businessSales || []).map((item: any) =>
+                            item.id === sale.id
+                              ? { ...item, received: !item.received }
+                              : item,
+                          ),
+                        }))
+                      }
+                    >
+                      {sale.received ? "Desmarcar recebimento" : "Marcar recebido"}
+                    </button>
+                  </div>
+
                   <Del
                     onClick={() =>
                       update((d: any) => ({
                         ...d,
-                        businessSales: (d.businessSales || []).filter((item: any) => item.id !== s.id),
+                        businessSales: (d.businessSales || []).filter(
+                          (item: any) => item.id !== sale.id,
+                        ),
                       }))
                     }
                   />
@@ -427,23 +167,37 @@ function BusinessPanel() {
       {subTab === "gastos" && (
         <Card>
           {expenses.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum gasto do negócio neste mês.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhum gasto do negócio neste mês.
+            </p>
           )}
+
           <ul className="divide-y">
-            {expenses.map((e: any) => (
-              <li key={e.id} className="flex items-center gap-3 py-3">
-                <div className="flex-1">
-                  <p className="font-medium">{e.description}</p>
+            {expenses.map((expense: any) => (
+              <li
+                key={expense.id}
+                className="flex items-center gap-3 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="break-words font-medium">
+                    {expense.description}
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    {e.category} · {fmtDate(e.date)}
+                    {expense.category} · {fmtDate(expense.date)}
                   </p>
                 </div>
-                <span className="font-semibold text-destructive">−{brl(e.amount)}</span>
+
+                <span className="font-semibold text-destructive">
+                  −{brl(Number(expense.amount || 0))}
+                </span>
+
                 <Del
                   onClick={() =>
                     update((d: any) => ({
                       ...d,
-                      businessExpenses: (d.businessExpenses || []).filter((item: any) => item.id !== e.id),
+                      businessCosts: (d.businessCosts || []).filter(
+                        (item: any) => item.id !== expense.id,
+                      ),
                     }))
                   }
                 />
@@ -456,41 +210,69 @@ function BusinessPanel() {
       {subTab === "contas" && (
         <Card>
           {bizBills.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhuma conta a pagar do negócio.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhuma conta a pagar do negócio.
+            </p>
           )}
+
           <ul className="divide-y">
-            {bizBills.map((b: any) => {
-              const late = !b.paid && b.dueDate < today();
+            {bizBills.map((bill: any) => {
+              const late = !bill.paid && bill.dueDate < today();
+
               return (
-                <li key={b.id} className="flex items-center gap-3 py-3">
+                <li key={bill.id} className="flex items-center gap-3 py-3">
                   <button
-                    aria-label="Marcar como paga"
+                    type="button"
+                    aria-label={bill.paid ? "Marcar conta como pendente" : "Marcar conta como paga"}
                     onClick={() =>
                       update((d: any) => ({
                         ...d,
-                        businessBills: (d.businessBills || []).map((item: any) =>
-                          item.id === b.id ? { ...item, paid: !item.paid } : item
+                        businessPayables: (d.businessPayables || []).map(
+                          (item: any) =>
+                            item.id === bill.id
+                              ? { ...item, paid: !item.paid }
+                              : item,
                         ),
                       }))
                     }
-                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 ${b.paid ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"}`}
+                    className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 ${
+                      bill.paid
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-muted-foreground"
+                    }`}
                   >
-                    {b.paid && <Check className="h-4 w-4" />}
+                    {bill.paid && <Check className="h-4 w-4" />}
                   </button>
-                  <div className="flex-1">
-                    <p className={`font-medium ${b.paid ? "text-muted-foreground line-through" : ""}`}>
-                      {b.description}
+
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`break-words font-medium ${
+                        bill.paid ? "text-muted-foreground line-through" : ""
+                      }`}
+                    >
+                      {bill.description}
                     </p>
-                    <p className={`text-xs ${late ? "text-destructive" : "text-muted-foreground"}`}>
-                      {late ? "Atrasada · " : "Vence "} {fmtDate(b.dueDate)}
+                    <p
+                      className={`text-xs ${
+                        late ? "text-destructive" : "text-muted-foreground"
+                      }`}
+                    >
+                      {late ? "Atrasada · " : "Vence "}
+                      {fmtDate(bill.dueDate)}
                     </p>
                   </div>
-                  <span className="font-semibold">{brl(b.amount)}</span>
+
+                  <span className="font-semibold">
+                    {brl(Number(bill.amount || 0))}
+                  </span>
+
                   <Del
                     onClick={() =>
                       update((d: any) => ({
                         ...d,
-                        businessBills: (d.businessBills || []).filter((item: any) => item.id !== b.id),
+                        businessPayables: (d.businessPayables || []).filter(
+                          (item: any) => item.id !== bill.id,
+                        ),
                       }))
                     }
                   />
@@ -500,6 +282,8 @@ function BusinessPanel() {
           </ul>
         </Card>
       )}
+
+      <BusinessDialog open={open} onOpenChange={setOpen} />
     </div>
   );
 }
@@ -522,12 +306,22 @@ function BusinessDialog({
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const n = parseFloat(amount.replace(",", "."));
-    if (!desc.trim() || !Number.isFinite(n) || n <= 0) return;
+
+    const value = money(amount);
+    const quantity = Math.floor(Number(qty));
+
+    if (!desc.trim() || !Number.isFinite(value) || value <= 0) {
+      alert("Informe uma descrição e um valor válido maior que zero.");
+      return;
+    }
+
+    if (type === "venda" && (!Number.isInteger(quantity) || quantity < 1)) {
+      alert("A quantidade precisa ser um número inteiro maior que zero.");
+      return;
+    }
 
     update((d: any) => {
       if (type === "venda") {
-        const quantity = parseInt(qty) || 1;
         return {
           ...d,
           businessSales: [
@@ -536,37 +330,40 @@ function BusinessDialog({
               id: uid(),
               product: desc.trim(),
               quantity,
-              price: n,
-              client: client.trim(),
-              paid,
+              unitPrice: roundMoney(value),
+              total: roundMoney(value * quantity),
+              customer: client.trim(),
+              received: paid,
               date,
             },
           ],
         };
       }
+
       if (type === "gasto") {
         return {
           ...d,
-          businessExpenses: [
-            ...(d.businessExpenses || []),
+          businessCosts: [
+            ...(d.businessCosts || []),
             {
               id: uid(),
               description: desc.trim(),
-              amount: n,
+              amount: roundMoney(value),
               category: cat,
               date,
             },
           ],
         };
       }
+
       return {
         ...d,
-        businessBills: [
-          ...(d.businessBills || []),
+        businessPayables: [
+          ...(d.businessPayables || []),
           {
             id: uid(),
             description: desc.trim(),
-            amount: n,
+            amount: roundMoney(value),
             dueDate: date,
             paid,
           },
@@ -578,6 +375,7 @@ function BusinessDialog({
     setAmount("");
     setQty("1");
     setClient("");
+    setCat(BIZ_CATS[0]);
     setDate(today());
     setPaid(false);
     onOpenChange(false);
@@ -589,16 +387,21 @@ function BusinessDialog({
         <DialogHeader>
           <DialogTitle>Novo registro no Negócio</DialogTitle>
         </DialogHeader>
+
         <form onSubmit={submit} className="space-y-3">
           <div className="grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
-            {(["venda", "gasto", "conta"] as const).map((k) => (
+            {(["venda", "gasto", "conta"] as const).map((key) => (
               <button
                 type="button"
-                key={k}
-                onClick={() => setType(k)}
-                className={`rounded-lg py-2 text-xs font-semibold capitalize ${type === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                key={key}
+                onClick={() => setType(key)}
+                className={`rounded-lg py-2 text-xs font-semibold capitalize ${
+                  type === key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground"
+                }`}
               >
-                {k === "venda" ? "Venda" : k === "gasto" ? "Gasto" : "Conta"}
+                {key === "venda" ? "Venda" : key === "gasto" ? "Gasto" : "Conta"}
               </button>
             ))}
           </div>
@@ -611,8 +414,8 @@ function BusinessDialog({
               type === "venda"
                 ? "Nome do produto / serviço"
                 : type === "gasto"
-                ? "Descrição do gasto"
-                : "Descrição da conta"
+                  ? "Descrição do gasto"
+                  : "Descrição da conta"
             }
             className={field}
           />
@@ -623,9 +426,10 @@ function BusinessDialog({
                 required
                 type="number"
                 min="1"
+                step="1"
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
-                placeholder="Qtd"
+                placeholder="Quantidade"
                 className={field}
               />
               <input
@@ -664,9 +468,15 @@ function BusinessDialog({
           )}
 
           {type === "gasto" && (
-            <select value={cat} onChange={(e) => setCat(e.target.value)} className={field}>
-              {BIZ_CATS.map((c) => (
-                <option key={c}>{c}</option>
+            <select
+              value={cat}
+              onChange={(e) => setCat(e.target.value)}
+              className={field}
+            >
+              {BIZ_CATS.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
               ))}
             </select>
           )}
@@ -689,7 +499,11 @@ function BusinessDialog({
               onChange={(e) => setPaid(e.target.checked)}
               className="h-4 w-4 rounded border"
             />
-            {type === "venda" ? "Já recebido" : type === "conta" ? "Já pago" : "Pago"}
+            {type === "venda"
+              ? "Já recebido"
+              : type === "conta"
+                ? "Já pago"
+                : "Gasto já pago"}
           </label>
 
           <button
@@ -697,484 +511,6 @@ function BusinessDialog({
             className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground"
           >
             Salvar registro
-          </button>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function FinanceGoals() {
-  const data = useData();
-  const [editing, setEditing] = useState<FinanceGoal | null>(null);
-
-  if (data.financeGoals.length === 0) {
-    return (
-      <Card className="py-8 text-center">
-        <Target className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-        <h2 className="mb-2 font-semibold">Sua primeira meta começa aqui</h2>
-        <p className="text-sm text-muted-foreground">
-          Toque em “Meta” para definir quanto deseja guardar.
-        </p>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {editing && (
-        <FinanceGoalDialog
-          key={editing.id}
-          open
-          onOpenChange={(value) => {
-            if (!value) setEditing(null);
-          }}
-          goal={editing}
-        />
-      )}
-      {data.financeGoals.map((goal) => {
-        const pct =
-          goal.targetAmount > 0
-            ? Math.min(100, Math.max(0, (goal.currentAmount / goal.targetAmount) * 100))
-            : 0;
-
-        return (
-          <Card key={goal.id}>
-            <div className="mb-3 flex items-start gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary">
-                <PiggyBank className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="break-words font-semibold">{goal.name}</h2>
-                {goal.deadline && (
-                  <p className="text-xs text-muted-foreground">Prazo: {fmtDate(goal.deadline)}</p>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Editar meta ${goal.name}`}
-                onClick={() => setEditing(goal)}
-              >
-                <Pencil />
-              </Button>
-              <Del
-                onClick={() =>
-                  update((d) => ({
-                    ...d,
-                    financeGoals: d.financeGoals.filter((g) => g.id !== goal.id),
-                  }))
-                }
-              />
-            </div>
-
-            <div className="mb-2 flex items-end justify-between gap-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Você já guardou</p>
-                <p className="text-lg font-bold">{brl(goal.currentAmount)}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Objetivo</p>
-                <p className="font-semibold">{brl(goal.targetAmount)}</p>
-              </div>
-            </div>
-
-            <div className="mb-2 h-3 overflow-hidden rounded-full bg-secondary">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground">
-              <span>{pct.toFixed(0)}% concluído</span>
-              <span>Faltam {brl(Math.max(0, goal.targetAmount - goal.currentAmount))}</span>
-            </div>
-
-            {goal.notes && <p className="mb-3 text-sm text-muted-foreground">{goal.notes}</p>}
-
-            <div className="flex gap-2">
-              <button
-                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground"
-                onClick={() => {
-                  const value = prompt("Quanto você guardou? Digite o valor em reais:");
-                  if (value === null) return;
-                  const amount = money(value);
-                  if (!Number.isFinite(amount) || amount <= 0) {
-                    alert("Digite um valor válido maior que zero.");
-                    return;
-                  }
-                  update((d) => ({
-                    ...d,
-                    financeGoals: d.financeGoals.map((g) =>
-                      g.id === goal.id
-                        ? { ...g, currentAmount: roundMoney(g.currentAmount + amount) }
-                        : g,
-                    ),
-                  }));
-                }}
-              >
-                <Plus className="h-4 w-4" /> Guardar valor
-              </button>
-              <button
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border"
-                aria-label="Corrigir valor guardado"
-                onClick={() => {
-                  const value = prompt(
-                    "Qual é o valor total que você já guardou?",
-                    String(goal.currentAmount).replace(".", ","),
-                  );
-                  if (value === null) return;
-                  const amount = money(value);
-                  if (!Number.isFinite(amount) || amount < 0) {
-                    alert("Digite um valor válido igual ou maior que zero.");
-                    return;
-                  }
-                  update((d) => ({
-                    ...d,
-                    financeGoals: d.financeGoals.map((g) =>
-                      g.id === goal.id ? { ...g, currentAmount: amount } : g,
-                    ),
-                  }));
-                }}
-              >
-                <TrendingUp className="h-4 w-4" />
-              </button>
-            </div>
-          </Card>
-        );
-      })}
-    </div>
-  );
-}
-
-function FinanceGoalDialog({
-  open,
-  onOpenChange,
-  goal,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  goal?: FinanceGoal;
-}) {
-  const [name, setName] = useState(goal?.name ?? "");
-  const [target, setTarget] = useState(goal ? String(goal.targetAmount) : "");
-  const [current, setCurrent] = useState(goal ? String(goal.currentAmount) : "0");
-  const [deadline, setDeadline] = useState(goal?.deadline ?? "");
-  const [notes, setNotes] = useState(goal?.notes ?? "");
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const targetAmount = money(target);
-    const currentAmount = money(current);
-
-    if (
-      !name.trim() ||
-      !Number.isFinite(targetAmount) ||
-      targetAmount <= 0 ||
-      !Number.isFinite(currentAmount) ||
-      currentAmount < 0
-    ) {
-      alert("Preencha o nome e os valores corretamente.");
-      return;
-    }
-
-    update((d) => ({
-      ...d,
-      financeGoals: goal
-        ? d.financeGoals.map((g) =>
-            g.id === goal.id
-              ? {
-                  ...g,
-                  name: name.trim(),
-                  targetAmount: roundMoney(targetAmount),
-                  currentAmount: roundMoney(currentAmount),
-                  deadline: deadline || undefined,
-                  notes: notes.trim() || undefined,
-                }
-              : g,
-          )
-        : [
-            ...d.financeGoals,
-            {
-              id: uid(),
-              name: name.trim(),
-              targetAmount,
-              currentAmount,
-              deadline: deadline || undefined,
-              createdAt: today(),
-              notes: notes.trim() || undefined,
-            },
-          ],
-    }));
-
-    setName("");
-    setTarget("");
-    setCurrent("0");
-    setDeadline("");
-    setNotes("");
-    onOpenChange(false);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[92vw] rounded-2xl sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{goal ? "Editar meta financeira" : "Nova meta financeira"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-3">
-          <label className="block text-sm">
-            Nome da meta
-            <input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex.: Juntar R$ 40.000"
-              className={`${field} mt-1`}
-            />
-          </label>
-          <label className="block text-sm">
-            Quanto deseja juntar? (R$)
-            <input
-              required
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              placeholder="40000"
-              className={`${field} mt-1`}
-            />
-          </label>
-          <label className="block text-sm">
-            Quanto já tem guardado? (R$)
-            <input
-              required
-              type="number"
-              min="0"
-              step="0.01"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              className={`${field} mt-1`}
-            />
-          </label>
-          <label className="block text-sm">
-            Prazo (opcional)
-            <input
-              type="date"
-              min={today()}
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className={`${field} mt-1`}
-            />
-          </label>
-          <label className="block text-sm">
-            Observações (opcional)
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Por que essa meta é importante?"
-              className={`${field} mt-1 h-20 py-3`}
-            />
-          </label>
-          <button
-            type="submit"
-            className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground"
-          >
-            Salvar meta
-          </button>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Del({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-label="Excluir"
-      onClick={() => confirm("Excluir este item?") && onClick()}
-      className="text-muted-foreground"
-    >
-      <Trash2 className="h-4 w-4" />
-    </button>
-  );
-}
-
-function DebtCard({ debt }: { debt: { id: string; name: string; total: number; paid: number } }) {
-  const [v, setV] = useState("");
-  const pct = debt.total > 0 ? Math.min(100, (debt.paid / debt.total) * 100) : 0;
-
-  return (
-    <Card>
-      <div className="mb-2 flex items-start justify-between">
-        <div>
-          <p className="font-semibold">{debt.name}</p>
-          <p className="text-xs text-muted-foreground">
-            Pago {brl(debt.paid)} de {brl(debt.total)}
-          </p>
-        </div>
-        <Del
-          onClick={() => update((d) => ({ ...d, debts: d.debts.filter((y) => y.id !== debt.id) }))}
-        />
-      </div>
-      <div className="mb-1 h-2 rounded-full bg-secondary">
-        <div className="h-2 rounded-full bg-primary" style={{ width: `${pct}%` }} />
-      </div>
-      <p className="mb-3 text-xs text-muted-foreground">
-        Restam {brl(Math.max(0, debt.total - debt.paid))} · {pct.toFixed(0)}%
-      </p>
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const n = parseFloat(v.replace(",", "."));
-          if (!Number.isFinite(n) || n <= 0) return;
-          if (n > roundMoney(debt.total - debt.paid)) {
-            alert("O pagamento não pode superar o saldo restante da dívida.");
-            return;
-          }
-          try {
-            update((d) => recordDebtPayment(d, debt.id, n, { id: uid(), date: today() }));
-          } catch (error) {
-            alert(error instanceof Error ? error.message : "Não foi possível salvar o pagamento.");
-            return;
-          }
-          setV("");
-        }}
-      >
-        <input
-          inputMode="decimal"
-          value={v}
-          onChange={(e) => setV(e.target.value)}
-          placeholder="Registrar pagamento (R$)"
-          className={`${field} h-11`}
-        />
-        <button className="h-11 rounded-xl bg-primary px-4 font-semibold text-primary-foreground">
-          Pagar
-        </button>
-      </form>
-    </Card>
-  );
-}
-
-function NewDialog({
-  open,
-  onOpenChange,
-  tab,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  tab: Tab;
-}) {
-  const [kind, setKind] = useState<"receita" | "despesa" | "conta" | "divida">("despesa");
-  const [desc, setDesc] = useState("");
-  const [amount, setAmount] = useState("");
-  const [cat, setCat] = useState<string>("Alimentação");
-  const [date, setDate] = useState(today());
-
-  const current = tab === "contas" ? "conta" : tab === "dividas" ? "divida" : kind;
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const n = parseFloat(amount.replace(",", "."));
-    if (!desc.trim() || !Number.isFinite(n) || n <= 0) return;
-
-    update((d) => {
-      if (current === "conta")
-        return {
-          ...d,
-          bills: [
-            ...d.bills,
-            { id: uid(), description: desc.trim(), amount: n, dueDate: date, paid: false },
-          ],
-        };
-      if (current === "divida")
-        return { ...d, debts: [...d.debts, { id: uid(), name: desc.trim(), total: n, paid: 0 }] };
-      return {
-        ...d,
-        transactions: [
-          ...d.transactions,
-          { id: uid(), type: current, description: desc.trim(), amount: n, category: cat, date },
-        ],
-      };
-    });
-
-    setDesc("");
-    setAmount("");
-    setDate(today());
-    onOpenChange(false);
-  }
-
-  const titles = {
-    receita: "Nova receita",
-    despesa: "Nova despesa",
-    conta: "Nova conta a pagar",
-    divida: "Nova dívida",
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[92vw] rounded-2xl sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{titles[current]}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-3">
-          {tab === "lancamentos" && (
-            <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
-              {(["despesa", "receita"] as const).map((k) => (
-                <button
-                  type="button"
-                  key={k}
-                  onClick={() => setKind(k)}
-                  className={`rounded-lg py-2 text-sm font-semibold capitalize ${current === k ? (k === "receita" ? "bg-success text-primary-foreground" : "bg-destructive text-destructive-foreground") : "text-muted-foreground"}`}
-                >
-                  {k}
-                </button>
-              ))}
-            </div>
-          )}
-          <input
-            required
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            placeholder={current === "divida" ? "Nome (ex.: Cartão, empréstimo)" : "Descrição"}
-            className={field}
-          />
-          <input
-            required
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder={current === "divida" ? "Valor total (R$)" : "Valor (R$)"}
-            className={field}
-          />
-          {(current === "receita" || current === "despesa") && (
-            <select value={cat} onChange={(e) => setCat(e.target.value)} className={field}>
-              {CATS.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          )}
-          {current !== "divida" && (
-            <label className="block text-sm text-muted-foreground">
-              {current === "conta" ? "Vencimento" : "Data"}
-              <input
-                required
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={`${field} mt-1`}
-              />
-            </label>
-          )}
-          <button
-            type="submit"
-            className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground"
-          >
-            Salvar
           </button>
         </form>
       </DialogContent>
