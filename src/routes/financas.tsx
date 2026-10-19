@@ -163,7 +163,7 @@ function Financas() {
       )}
 
       {tab === "planos" && (
-        <FinancialPlanView plan={(data as any).financialPlan} transactions={data.transactions} />
+        <FinancialPlanView plan={data.financialPlan} transactions={data.transactions} />
       )}
 
       {tab === "negocio" && <BusinessPanel />}
@@ -929,7 +929,7 @@ function BusinessDialog({
               quantity,
               unitPrice: roundMoney(value),
               total: roundMoney(value * quantity),
-              customer: client.trim(),
+              customer: client.trim() || undefined, // <--- Ajustado aqui!
               received: paid,
               date,
             },
