@@ -142,7 +142,7 @@ function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
     return {
       ...g,
       initialAmount: initial,
-      currentAmount: computedTotal, // Sincroniza o currentAmount com o total real
+      currentAmount: computedTotal,
       frequency: g.frequency || "monthly",
       contributions,
       startDate: g.startDate || g.createdAt || today(),
@@ -216,12 +216,11 @@ export function useData(): AppData {
   );
 }
 
-// Helpers unificados e seguros para cálculo nas Metas
+// Helper corrigido para cálculo exato sem duplicação
 export function getGoalSavedAmount(goal: FinanceGoal): number {
   const contributionsTotal = (goal.contributions || []).reduce((acc, c) => acc + c.amount, 0);
   const initial = goal.initialAmount ?? 0;
-  const base = initial > 0 ? initial : (goal.currentAmount > 0 ? goal.currentAmount : 0);
-  return base + contributionsTotal;
+  return initial + contributionsTotal;
 }
 
 export function syncGoalAmount(goal: FinanceGoal): FinanceGoal {
