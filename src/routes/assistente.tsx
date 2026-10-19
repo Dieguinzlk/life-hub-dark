@@ -24,9 +24,6 @@ function Assistente() {
   const data = useData();
   const dataRef = useRef(data);
   dataRef.current = data;
-  const [share, setShare] = useState(false);
-  const shareRef = useRef(share);
-  shareRef.current = share;
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -48,7 +45,7 @@ function Assistente() {
           return response;
         },
         prepareSendMessagesRequest: ({ messages }) => ({
-          body: { messages, today: today(), snapshot: shareRef.current ? buildSnapshot(dataRef.current) : null },
+          body: { messages, today: today(), snapshot: buildSnapshot(dataRef.current) },
         }),
       }),
   );
@@ -89,14 +86,6 @@ function Assistente() {
         ) : undefined
       }
     >
-      <label className="mb-4 flex items-center justify-between gap-3 rounded-2xl border bg-card p-3 text-sm">
-        <span>
-          <span className="font-semibold">Compartilhar meus dados</span>
-          <span className="block text-xs text-muted-foreground">Envia um resumo de finanças, tarefas, treinos e metas junto com suas mensagens.</span>
-        </span>
-        <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
-      </label>
-
       {messages.length === 0 && (
         <Card className="mb-4 space-y-2 text-sm text-muted-foreground">
           <p className="flex items-center gap-2 font-semibold text-foreground"><Bot className="h-4 w-4 text-primary" /> Experimente pedir:</p>
