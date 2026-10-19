@@ -28,7 +28,7 @@ function Financas() {
   const month = today().slice(0, 7);
   const [filterMonth, setFilterMonth] = useState(month);
 
-  const tx = data.transactions.filter((x) => x.date.startsWith(filterMonth)).sort((a, b) => b.date.localeCompare(a.date));
+  const tx = (data?.transactions || []).filter((x) => x.date && x.date.startsWith(filterMonth)).sort((a, b) => b.date.localeCompare(a.date));
   const inc = tx.filter((x) => x.type === "receita").reduce((s, x) => s + x.amount, 0);
   const exp = tx.filter((x) => x.type === "despesa").reduce((s, x) => s + x.amount, 0);
   const byCat = Object.entries(
@@ -61,7 +61,7 @@ function Financas() {
     >
       <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 sm:grid-cols-5">
         {tabs.map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`rounded-lg py-2 text-xs sm:text-sm font-semibold ${tab === k ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+          <button key={k} onClick={() => setTab(k)} className={`rounded-lg py-2 text-xs sm:text-sm font-semibold transition ${tab === k ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
             {l}
           </button>
         ))}
@@ -89,7 +89,7 @@ function Financas() {
             </Card>
           )}
           <Card>
-            {tx.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lançamento neste mês. Toque em “Novo”.</p>}
+            {tx.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lançamento neste mês. Toque em “Novo” ou verifique o filtro de mês acima.</p>}
             <ul className="divide-y">
               {tx.map((x) => (
                 <li key={x.id} className="flex items-center gap-3 py-3">
@@ -108,9 +108,9 @@ function Financas() {
 
       {tab === "contas" && (
         <Card>
-          {data.bills.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma conta cadastrada.</p>}
+          {(!data.bills || data.bills.length === 0) && <p className="text-sm text-muted-foreground">Nenhuma conta cadastrada.</p>}
           <ul className="divide-y">
-            {[...data.bills].sort((a, b) => Number(a.paid) - Number(b.paid) || a.dueDate.localeCompare(b.dueDate)).map((b) => {
+            {[...(data.bills || [])].sort((a, b) => Number(a.paid) - Number(b.paid) || a.dueDate.localeCompare(b.dueDate)).map((b) => {
               const late = !b.paid && b.dueDate < today();
               return (
                 <li key={b.id} className="flex items-center gap-3 py-3">
@@ -121,7 +121,7 @@ function Financas() {
                         const paying = !b.paid;
                         return {
                           ...d,
-                          bills: d.bills.map((y) => (y.id === b.id ? { ...y, paid: paying } : y)),
+                          bills: (d.bills || []).map((y) => (y.id === b.id ? { ...y, paid: paying } : y)),
                           transactions: paying
                             ? [...d.transactions, { id: "bill-" + b.id, type: "despesa", description: b.description, amount: b.amount, category: "Contas", date: today() }]
                             : d.transactions.filter((t) => t.id !== "bill-" + b.id),
@@ -142,14 +142,14 @@ function Financas() {
               );
             })}
           </ul>
-          {data.bills.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Ao marcar como paga, a despesa é lançada automaticamente.</p>}
+          {data.bills && data.bills.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Ao marcar como paga, a despesa é lançada automaticamente.</p>}
         </Card>
       )}
 
       {tab === "dividas" && (
         <div className="space-y-3">
-          {data.debts.length === 0 && <Card><p className="text-sm text-muted-foreground">Nenhuma dívida cadastrada. Ótimo! 🎉</p></Card>}
-          {data.debts.map((d) => <DebtCard key={d.id} debt={d} />)}
+          {(!data.debts || data.debts.length === 0) && <Card><p className="text-sm text-muted-foreground">Nenhuma dívida cadastrada. Ótimo! 🎉</p></Card>}
+          {(data.debts || []).map((d) => <DebtCard key={d.id} debt={d} />)}
         </div>
       )}
 
@@ -184,7 +184,7 @@ function FinancialPlanView({ plan, transactions }: { plan: any; transactions: an
   }
 
   const month = today().slice(0, 7);
-  const monthTx = transactions.filter((t) => t.date.startsWith(month) && t.type === "despesa");
+  const monthTx = (transactions || []).filter((t) => t.date && t.date.startsWith(month) && t.type === "despesa");
   const totalSpent = monthTx.reduce((acc, t) => acc + t.amount, 0);
 
   return (
@@ -293,7 +293,7 @@ function FinancialPlanView({ plan, transactions }: { plan: any; transactions: an
         <Card className="space-y-3">
           <h4 className="font-semibold">Passos da Estratégia Prática</h4>
           <div className="space-y-2 text-xs">
-            {plan.strategies.map((step: string, idx: number) => (
+            {(plan.strategies || []).map((step: string, idx: number) => (
               <div key={idx} className="flex gap-2.5 items-start p-3 rounded-xl border bg-secondary/30">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-bold text-emerald-400">{idx + 1}</span>
                 <p className="text-foreground leading-relaxed">{step}</p>
@@ -308,8 +308,9 @@ function FinancialPlanView({ plan, transactions }: { plan: any; transactions: an
 
 function FinanceGoals() {
   const data = useData();
+  const goals = data?.financeGoals || [];
 
-  if (data.financeGoals.length === 0) {
+  if (goals.length === 0) {
     return (
       <Card className="py-8 text-center">
         <Target className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
@@ -321,7 +322,7 @@ function FinanceGoals() {
 
   return (
     <div className="space-y-3">
-      {data.financeGoals.map((goal) => {
+      {goals.map((goal) => {
         const pct = goal.targetAmount > 0
           ? Math.min(100, Math.max(0, (goal.currentAmount / goal.targetAmount) * 100))
           : 0;
@@ -373,7 +374,7 @@ function FinanceGoals() {
                   }
                   update((d) => ({
                     ...d,
-                    financeGoals: d.financeGoals.map((g) =>
+                    financeGoals: (d.financeGoals || []).map((g) =>
                       g.id === goal.id ? { ...g, currentAmount: g.currentAmount + amount } : g,
                     ),
                   }));
@@ -394,7 +395,7 @@ function FinanceGoals() {
                   }
                   update((d) => ({
                     ...d,
-                    financeGoals: d.financeGoals.map((g) =>
+                    financeGoals: (d.financeGoals || []).map((g) =>
                       g.id === goal.id ? { ...g, currentAmount: amount } : g,
                     ),
                   }));
@@ -431,7 +432,7 @@ function FinanceGoalDialog({ open, onOpenChange }: { open: boolean; onOpenChange
     update((d) => ({
       ...d,
       financeGoals: [
-        ...d.financeGoals,
+        ...(d.financeGoals || []),
         {
           id: uid(),
           name: name.trim(),
@@ -503,7 +504,7 @@ function DebtCard({ debt }: { debt: { id: string; name: string; total: number; p
           <p className="font-semibold">{debt.name}</p>
           <p className="text-xs text-muted-foreground">Pago {brl(debt.paid)} de {brl(debt.total)}</p>
         </div>
-        <Del onClick={() => update((d) => ({ ...d, debts: d.debts.filter((y) => y.id !== debt.id) }))} />
+        <Del onClick={() => update((d) => ({ ...d, debts: (d.debts || []).filter((y) => y.id !== debt.id) }))} />
       </div>
       <div className="mb-1 h-2 rounded-full bg-secondary"><div className="h-2 rounded-full bg-primary" style={{ width: `${pct}%` }} /></div>
       <p className="mb-3 text-xs text-muted-foreground">Restam {brl(Math.max(0, debt.total - debt.paid))} · {pct.toFixed(0)}%</p>
@@ -515,7 +516,7 @@ function DebtCard({ debt }: { debt: { id: string; name: string; total: number; p
           if (!Number.isFinite(n) || n <= 0) return;
           update((d) => ({
             ...d,
-            debts: d.debts.map((y) => (y.id === debt.id ? { ...y, paid: Math.min(y.total, y.paid + n) } : y)),
+            debts: (d.debts || []).map((y) => (y.id === debt.id ? { ...y, paid: Math.min(y.total, y.paid + n) } : y)),
             transactions: [...d.transactions, { id: uid(), type: "despesa", description: `Pagamento: ${debt.name}`, amount: n, category: "Dívidas", date: today() }],
           }));
           setV("");
@@ -543,8 +544,8 @@ function NewDialog({ open, onOpenChange, tab }: { open: boolean; onOpenChange: (
     if (!desc.trim() || !Number.isFinite(n) || n <= 0) return;
 
     update((d) => {
-      if (current === "conta") return { ...d, bills: [...d.bills, { id: uid(), description: desc.trim(), amount: n, dueDate: date, paid: false }] };
-      if (current === "divida") return { ...d, debts: [...d.debts, { id: uid(), name: desc.trim(), total: n, paid: 0 }] };
+      if (current === "conta") return { ...d, bills: [...(d.bills || []), { id: uid(), description: desc.trim(), amount: n, dueDate: date, paid: false }] };
+      if (current === "divida") return { ...d, debts: [...(d.debts || []), { id: uid(), name: desc.trim(), total: n, paid: 0 }] };
       return { ...d, transactions: [...d.transactions, { id: uid(), type: current, description: desc.trim(), amount: n, category: cat, date }] };
     });
 
