@@ -1,3 +1,4 @@
+
 import { useSyncExternalStore } from "react";
 import { backupSchema } from "@/lib/data-validation";
 import { toast } from "sonner";
@@ -73,9 +74,9 @@ export type FinanceGoal = {
   name: string;
   targetAmount: number;
   currentAmount: number;
-  deadline?: string | undefined;
+  deadline?: string;
   createdAt: string;
-  notes?: string | undefined;
+  notes?: string;
 };
 
 export type HealthGoal = {
@@ -91,6 +92,35 @@ export type HealthGoal = {
   notes?: string;
 };
 
+// Registros do negócio de doces
+export type BusinessSale = {
+  id: string;
+  product: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  date: string;
+  customer?: string;
+  received: boolean;
+  dueDate?: string;
+};
+
+export type BusinessCost = {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  category: string;
+};
+
+export type BusinessPayable = {
+  id: string;
+  description: string;
+  amount: number;
+  dueDate: string;
+  paid: boolean;
+};
+
 export type AppData = {
   version: 1;
   transactions: Transaction[];
@@ -103,6 +133,9 @@ export type AppData = {
   workoutGoal: number;
   financeGoals: FinanceGoal[];
   healthGoals: HealthGoal[];
+  businessSales: BusinessSale[];
+  businessCosts: BusinessCost[];
+  businessPayables: BusinessPayable[];
 };
 
 const KEY = "gerenciador-de-vida:v1";
@@ -119,23 +152,48 @@ const empty: AppData = {
   workoutGoal: 3,
   financeGoals: [],
   healthGoals: [],
+  businessSales: [],
+  businessCosts: [],
+  businessPayables: [],
 };
 
-function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
+function normalizeData(
+  saved: Partial<AppData> | null | undefined,
+): AppData {
   return {
     ...empty,
     ...(saved || {}),
     version: 1,
-    transactions: Array.isArray(saved?.transactions) ? saved.transactions : [],
+    transactions: Array.isArray(saved?.transactions)
+      ? saved.transactions
+      : [],
     bills: Array.isArray(saved?.bills) ? saved.bills : [],
     debts: Array.isArray(saved?.debts) ? saved.debts : [],
     tasks: Array.isArray(saved?.tasks) ? saved.tasks : [],
     habits: Array.isArray(saved?.habits) ? saved.habits : [],
     plans: Array.isArray(saved?.plans) ? saved.plans : [],
-    workoutLogs: Array.isArray(saved?.workoutLogs) ? saved.workoutLogs : [],
-    workoutGoal: typeof saved?.workoutGoal === "number" ? saved.workoutGoal : 3,
-    financeGoals: Array.isArray(saved?.financeGoals) ? saved.financeGoals : [],
-    healthGoals: Array.isArray(saved?.healthGoals) ? saved.healthGoals : [],
+    workoutLogs: Array.isArray(saved?.workoutLogs)
+      ? saved.workoutLogs
+      : [],
+    workoutGoal:
+      typeof saved?.workoutGoal === "number"
+        ? saved.workoutGoal
+        : 3,
+    financeGoals: Array.isArray(saved?.financeGoals)
+      ? saved.financeGoals
+      : [],
+    healthGoals: Array.isArray(saved?.healthGoals)
+      ? saved.healthGoals
+      : [],
+    businessSales: Array.isArray(saved?.businessSales)
+      ? saved.businessSales
+      : [],
+    businessCosts: Array.isArray(saved?.businessCosts)
+      ? saved.businessCosts
+      : [],
+    businessPayables: Array.isArray(saved?.businessPayables)
+      ? saved.businessPayables
+      : [],
   };
 }
 
@@ -151,14 +209,20 @@ function load() {
 
   try {
     const raw = localStorage.getItem(KEY);
+
     if (raw) {
       const parsed: unknown = JSON.parse(raw);
-      if (!backupSchema.safeParse(parsed).success) throw new Error("Dados locais inválidos");
+
+      if (!backupSchema.safeParse(parsed).success) {
+        throw new Error("Dados locais inválidos");
+      }
+
       state = normalizeData(parsed as Partial<AppData>);
     }
   } catch {
     loadFailed = true;
     state = empty;
+
     toast.error(
       "Não foi possível ler os dados locais. Eles não foram apagados. Restaure um backup válido antes de salvar alterações.",
     );
@@ -175,9 +239,13 @@ function setState(next: AppData) {
       toast.error(
         "Não foi possível salvar neste aparelho. Libere espaço ou permita o armazenamento e tente novamente.",
       );
-      throw new Error("Alteração não salva: armazenamento indisponível.");
+
+      throw new Error(
+        "Alteração não salva: armazenamento indisponível.",
+      );
     }
   }
+
   state = normalized;
   loadFailed = false;
 
@@ -186,7 +254,13 @@ function setState(next: AppData) {
 
 export function update(fn: (data: AppData) => AppData) {
   load();
-  if (loadFailed) throw new Error("Restaure um backup válido antes de salvar alterações.");
+
+  if (loadFailed) {
+    throw new Error(
+      "Restaure um backup válido antes de salvar alterações.",
+    );
+  }
+
   setState(fn(state));
 }
 
@@ -195,6 +269,7 @@ export function useData(): AppData {
     (callback) => {
       load();
       listeners.add(callback);
+
       return () => listeners.delete(callback);
     },
     () => {
@@ -205,14 +280,16 @@ export function useData(): AppData {
   );
 }
 
-export const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+export const uid = () =>
+  Math.random().toString(36).slice(2) +
+  Date.now().toString(36);
 
 export const today = () => {
   const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-    2,
-    "0",
-  )}-${String(date.getDate()).padStart(2, "0")}`;
+
+  return `${date.getFullYear()}-${String(
+    date.getMonth() + 1,
+  ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
 
 export const brl = (n: number) =>
@@ -228,12 +305,17 @@ export const fmtDate = (value: string) => {
 
 export function exportBackup() {
   load();
-  if (loadFailed)
-    throw new Error("Não é possível exportar: os dados locais não puderam ser lidos.");
 
-  const blob = new Blob([JSON.stringify(state, null, 2)], {
-    type: "application/json",
-  });
+  if (loadFailed) {
+    throw new Error(
+      "Não é possível exportar: os dados locais não puderam ser lidos.",
+    );
+  }
+
+  const blob = new Blob(
+    [JSON.stringify(state, null, 2)],
+    { type: "application/json" },
+  );
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -246,7 +328,10 @@ export function exportBackup() {
 }
 
 export async function importBackup(file: File) {
-  if (file.size > 10 * 1024 * 1024) throw new Error("Backup muito grande (máximo 10 MB).");
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Backup muito grande (máximo 10 MB).");
+  }
+
   const parsed: unknown = JSON.parse(await file.text());
 
   if (!backupSchema.safeParse(parsed).success) {
