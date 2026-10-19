@@ -1,4 +1,8 @@
 - [x] Atualizar o modelo padrão Gemini e verificar testes.
-- [ ] Renovar a barra inferior flutuante, com acesso à IA à direita.
-- [ ] Renovar a Home com saldo, assistente, hábitos interativos e vencimentos.
-- [ ] Verificar interação, persistência e apresentação em celular.
+- [x] Renovar a barra inferior flutuante, com acesso à IA à direita.
+- [x] Renovar a Home com saldo, assistente, hábitos interativos e vencimentos.
+- [x] Verificar interação, persistência e apresentação em celular.
+- [x] Auditar configurações, dependências, rotas e erros de carregamento.
+- [x] Corrigir problemas comprovados de dados, backups e validação da IA.
+- [x] Validar os fluxos principais e apresentar relatório com limitações reais.
+- [ ] Verificar inferência real Gemini e deployment Vercel: depende da chave e acesso à configuração externa.

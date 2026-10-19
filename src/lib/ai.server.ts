@@ -1,5 +1,12 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { APICallError, convertToModelMessages, streamText, tool, type UIMessage } from "ai";
+import {
+  APICallError,
+  convertToModelMessages,
+  streamText,
+  tool,
+  validateUIMessages,
+  type UIMessage,
+} from "ai";
 import { z } from "zod";
 
 const date = z.string().nullable().describe("Data no formato AAAA-MM-DD, ou null para hoje");
@@ -27,7 +34,11 @@ export const tools = {
   }),
   add_bill: tool({
     description: "Cadastrar uma conta a pagar",
-    inputSchema: z.object({ description: z.string(), amount: z.number(), dueDate: z.string().describe("AAAA-MM-DD") }),
+    inputSchema: z.object({
+      description: z.string(),
+      amount: z.number(),
+      dueDate: z.string().describe("AAAA-MM-DD"),
+    }),
     outputSchema: out,
   }),
   add_task: tool({
@@ -41,7 +52,8 @@ export const tools = {
     outputSchema: out,
   }),
   complete_task: tool({
-    description: "Marcar uma tarefa existente como concluída (precisa do id dos dados compartilhados)",
+    description:
+      "Marcar uma tarefa existente como concluída (precisa do id dos dados compartilhados)",
     inputSchema: z.object({ taskId: z.string() }),
     outputSchema: out,
   }),
@@ -50,7 +62,11 @@ export const tools = {
     inputSchema: z.object({ taskId: z.string() }),
     outputSchema: out,
   }),
-  add_habit: tool({ description: "Criar um novo hábito", inputSchema: z.object({ name: z.string() }), outputSchema: out }),
+  add_habit: tool({
+    description: "Criar um novo hábito",
+    inputSchema: z.object({ name: z.string() }),
+    outputSchema: out,
+  }),
   add_finance_goal: tool({
     description: "Criar uma meta financeira",
     inputSchema: z.object({
@@ -58,20 +74,6 @@ export const tools = {
       targetAmount: z.number(),
       currentAmount: z.number().nullable(),
       deadline: z.string().nullable().describe("AAAA-MM-DD ou null"),
-    }),
-    outputSchema: out,
-  }),
-  create_financial_plan: tool({
-    description: "Criar ou atualizar o plano estratégico financeiro com tetos de gastos (ex: 50/30/20), prazo em meses e estratégias práticas",
-    inputSchema: z.object({
-      income: z.number().describe("Renda mensal considerada em BRL"),
-      targetMonths: z.number().describe("Prazo em meses estipulado para a conclusão do plano"),
-      essentialLimit: z.number().describe("Teto mensal para despesas essenciais (ex: 50%)"),
-      wantsLimit: z.number().describe("Teto mensal para desejos/lazer (ex: 30%)"),
-      savingsLimit: z.number().describe("Valor mensal para reservas/dívidas/investimentos (ex: 20%)"),
-      debtPayoffMonthly: z.number().describe("Valor mensal direcionado para dívidas"),
-      reserveMonthly: z.number().describe("Valor mensal direcionado para reserva"),
-      strategies: z.array(z.string()).describe("Passos práticos da estratégia criada"),
     }),
     outputSchema: out,
   }),
@@ -106,42 +108,105 @@ export const tools = {
 
 function errorText(error: unknown): string {
   const status = APICallError.isInstance(error) ? error.statusCode : undefined;
-  if (status === 429) return "Limite de uso atingido no momento. Aguarde alguns instantes e tente de novo.";
-  if (status === 401 || status === 403) return "O Gemini recusou o acesso. Verifique a chave e as permissões no servidor.";
-  if (status === 400) return "O Gemini não aceitou a solicitação. Verifique o modelo configurado no servidor.";
+  if (status === 429)
+    return "Limite de uso atingido no momento. Aguarde alguns instantes e tente de novo.";
+  if (status === 401 || status === 403)
+    return "O Gemini recusou o acesso. Verifique a chave e as permissões no servidor.";
+  if (status === 400)
+    return "O Gemini não aceitou a solicitação. Verifique o modelo configurado no servidor.";
+  if (status === 404)
+    return "O modelo configurado não está disponível no Gemini. Verifique GEMINI_MODEL no ambiente do deploy.";
   return "Não foi possível falar com a IA agora. Verifique a conexão e tente de novo.";
 }
 
 export async function handleChat(request: Request): Promise<Response> {
-  const apiKey = process.env["GEMINI_API_KEY"];
-  if (!apiKey) return Response.json({ code: "AI_NOT_CONFIGURED", error: "O Gemini ainda não está configurado neste ambiente. Configure GEMINI_API_KEY no servidor e tente novamente." }, { status: 409 });
-  
-  const google = createGoogleGenerativeAI({ apiKey });
-  // Modelo configurado para gemini-3.8-flash
-  const model = process.env["GEMINI_MODEL"] || "gemini-3.8-flash";
-
-  let body: { messages?: UIMessage[]; snapshot?: unknown; today?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Requisição inválida." }, { status: 400 });
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin)
+    return Response.json({ error: "Origem da solicitação não permitida." }, { status: 403 });
+  const maxBytes = 128 * 1024;
+  if (Number(request.headers.get("content-length")) > maxBytes)
+    return Response.json({ error: "Solicitação muito grande." }, { status: 413 });
+  let raw = "";
+  if (request.body) {
+    const reader = request.body.getReader();
+    const decoder = new TextDecoder();
+    let bytes = 0;
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      bytes += chunk.value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        return Response.json({ error: "Solicitação muito grande." }, { status: 413 });
+      }
+      raw += decoder.decode(chunk.value, { stream: true });
+    }
+    raw += decoder.decode();
   }
-  const messages = Array.isArray(body.messages) ? body.messages.slice(-40) : [];
-  if (messages.length === 0) return Response.json({ error: "Mensagem vazia." }, { status: 400 });
+  let body: { messages: UIMessage[]; snapshot?: unknown; today?: string | undefined };
+  try {
+    const parsed = z
+      .object({
+        messages: z.array(z.unknown()).min(1).max(40),
+        snapshot: z.unknown().optional(),
+        today: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      })
+      .parse(JSON.parse(raw));
+    const messages = await validateUIMessages({ messages: parsed.messages, tools });
+    const last = messages.at(-1);
+    if (!last || last.role === "system" || messages.some((message) => message.role === "system"))
+      throw new Error("Invalid role");
+    if (
+      last.role === "user" &&
+      !last.parts.some((part) => part.type === "text" && part.text.trim().length > 0)
+    )
+      throw new Error("Empty message");
+    if (
+      messages.some((message) =>
+        message.parts.some((part) => part.type === "text" && part.text.length > 8000),
+      )
+    )
+      throw new Error("Long message");
+    body = { ...parsed, messages };
+  } catch {
+    return Response.json(
+      { error: "Requisição inválida: verifique a mensagem e o tamanho da conversa." },
+      { status: 400 },
+    );
+  }
+  const apiKey = process.env["GEMINI_API_KEY"];
+  if (!apiKey)
+    return Response.json(
+      {
+        code: "AI_NOT_CONFIGURED",
+        error:
+          "O Gemini ainda não está configurado neste ambiente. Configure GEMINI_API_KEY no servidor e tente novamente.",
+      },
+      { status: 409 },
+    );
+  const google = createGoogleGenerativeAI({ apiKey });
+  const model = process.env["GEMINI_MODEL"] || "gemini-2.0-flash";
 
-  const today = typeof body.today === "string" ? body.today.slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const messages = body.messages;
+
+  const today =
+    typeof body.today === "string"
+      ? body.today.slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
   const snapshot = body.snapshot ? JSON.stringify(body.snapshot).slice(0, 20000) : null;
 
   const instructions = [
-    "Você é o assistente do app Gerenciador de Vida. Responda sempre em português do Brasil, de forma curta, direta e prática.",
+    "Você é o assistente do app Gerenciador de Vida. Responda sempre em português do Brasil, de forma curta e prática.",
     "Ajude com rotina, tarefas, finanças (valores em BRL), hábitos, metas e treinos.",
-    "Ao propor um plano de organização financeira (ex: regra 50/30/20), se o usuário não tiver informado em quanto tempo deseja concluir/organizar, pergunte em quanto tempo (quantos meses) ele gostaria de realizar esse plano antes de chamar a ferramenta `create_financial_plan`.",
     "Quando o usuário pedir para criar/registrar/alterar algo, use as ferramentas. Cada ação é confirmada pelo usuário no aparelho antes de ser salva; não diga que salvou antes de receber o resultado.",
     "Se faltar uma informação essencial (ex.: valor de uma despesa), pergunte antes de chamar a ferramenta.",
     `Hoje é ${today}. Use datas no formato AAAA-MM-DD.`,
     snapshot
-      ? `Dados atuais do usuário (sincronizados automaticamente): ${snapshot}`
-      : "Sincronização de dados não disponível no momento.",
+      ? `Dados atuais do usuário (compartilhados com autorização): ${snapshot}`
+      : "O usuário NÃO compartilhou seus dados. Você não conhece tarefas, planos ou lançamentos existentes; para ações que precisam de um id existente, peça para ativar 'Compartilhar meus dados'.",
   ].join("\n");
 
   try {

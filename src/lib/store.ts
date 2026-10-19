@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from "react";
+import { backupSchema } from "@/lib/data-validation";
+import { toast } from "sonner";
 
 export type Transaction = {
   id: string;
@@ -66,27 +68,14 @@ export type Habit = {
   doneDates: string[];
 };
 
-export type Contribution = {
-  id: string;
-  goalId: string;
-  amount: number;
-  date: string; // YYYY-MM-DD (fuso horário local)
-  notes?: string;
-};
-
 export type FinanceGoal = {
   id: string;
   name: string;
   targetAmount: number;
-  currentAmount: number; // Mantido para compatibilidade total
-  initialAmount?: number; // Valor inicial guardado
-  startDate?: string;
+  currentAmount: number;
   deadline?: string | undefined;
-  frequency?: "daily" | "monthly";
-  contributions?: Contribution[]; // Histórico de depósitos confirmados
   createdAt: string;
   notes?: string | undefined;
-  estimatedReturnRate?: number; // Taxa anual % opcional para simulação
 };
 
 export type HealthGoal = {
@@ -102,19 +91,6 @@ export type HealthGoal = {
   notes?: string;
 };
 
-// Estrutura do Plano Financeiro Estratégico (50/30/20 com metas temporais)
-export interface FinancialPlan {
-  income: number;
-  targetMonths: number;
-  essentialLimit: number;
-  wantsLimit: number;
-  savingsLimit: number;
-  debtPayoffMonthly: number;
-  reserveMonthly: number;
-  strategies: string[];
-  createdAt: string;
-}
-
 export type AppData = {
   version: 1;
   transactions: Transaction[];
@@ -127,7 +103,6 @@ export type AppData = {
   workoutGoal: number;
   financeGoals: FinanceGoal[];
   healthGoals: HealthGoal[];
-  financialPlan?: FinancialPlan; // <--- Plano Estratégico Salvo
 };
 
 const KEY = "gerenciador-de-vida:v1";
@@ -144,26 +119,9 @@ const empty: AppData = {
   workoutGoal: 3,
   financeGoals: [],
   healthGoals: [],
-  financialPlan: undefined,
 };
 
 function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
-  const normalizedFinanceGoals = (Array.isArray(saved?.financeGoals) ? saved.financeGoals : []).map(g => {
-    const contributions = Array.isArray(g.contributions) ? g.contributions : [];
-    const initial = g.initialAmount ?? g.currentAmount ?? 0;
-    const contributionsTotal = contributions.reduce((acc, c) => acc + c.amount, 0);
-    const computedTotal = initial + contributionsTotal;
-
-    return {
-      ...g,
-      initialAmount: initial,
-      currentAmount: computedTotal,
-      frequency: g.frequency || "monthly",
-      contributions,
-      startDate: g.startDate || g.createdAt || today(),
-    };
-  });
-
   return {
     ...empty,
     ...(saved || {}),
@@ -175,18 +133,15 @@ function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
     habits: Array.isArray(saved?.habits) ? saved.habits : [],
     plans: Array.isArray(saved?.plans) ? saved.plans : [],
     workoutLogs: Array.isArray(saved?.workoutLogs) ? saved.workoutLogs : [],
-    workoutGoal:
-      typeof saved?.workoutGoal === "number" ? saved.workoutGoal : 3,
-    financeGoals: normalizedFinanceGoals,
-    healthGoals: Array.isArray(saved?.healthGoals)
-      ? saved.healthGoals
-      : [],
-    financialPlan: saved?.financialPlan ?? undefined, // Preserva o plano estratégico
+    workoutGoal: typeof saved?.workoutGoal === "number" ? saved.workoutGoal : 3,
+    financeGoals: Array.isArray(saved?.financeGoals) ? saved.financeGoals : [],
+    healthGoals: Array.isArray(saved?.healthGoals) ? saved.healthGoals : [],
   };
 }
 
 let state: AppData = empty;
 let loaded = false;
+let loadFailed = false;
 const listeners = new Set<() => void>();
 
 function load() {
@@ -196,24 +151,42 @@ function load() {
 
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) state = normalizeData(JSON.parse(raw));
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (!backupSchema.safeParse(parsed).success) throw new Error("Dados locais inválidos");
+      state = normalizeData(parsed as Partial<AppData>);
+    }
   } catch {
+    loadFailed = true;
     state = empty;
+    toast.error(
+      "Não foi possível ler os dados locais. Eles não foram apagados. Restaure um backup válido antes de salvar alterações.",
+    );
   }
 }
 
 function setState(next: AppData) {
-  state = normalizeData(next);
+  const normalized = normalizeData(next);
 
   if (typeof window !== "undefined") {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    try {
+      localStorage.setItem(KEY, JSON.stringify(normalized));
+    } catch {
+      toast.error(
+        "Não foi possível salvar neste aparelho. Libere espaço ou permita o armazenamento e tente novamente.",
+      );
+      throw new Error("Alteração não salva: armazenamento indisponível.");
+    }
   }
+  state = normalized;
+  loadFailed = false;
 
   listeners.forEach((listener) => listener());
 }
 
 export function update(fn: (data: AppData) => AppData) {
   load();
+  if (loadFailed) throw new Error("Restaure um backup válido antes de salvar alterações.");
   setState(fn(state));
 }
 
@@ -232,23 +205,7 @@ export function useData(): AppData {
   );
 }
 
-// Helper para cálculo exato sem duplicação
-export function getGoalSavedAmount(goal: FinanceGoal): number {
-  const contributionsTotal = (goal.contributions || []).reduce((acc, c) => acc + c.amount, 0);
-  const initial = goal.initialAmount ?? 0;
-  return initial + contributionsTotal;
-}
-
-export function syncGoalAmount(goal: FinanceGoal): FinanceGoal {
-  const totalSaved = getGoalSavedAmount(goal);
-  return {
-    ...goal,
-    currentAmount: totalSaved,
-  };
-}
-
-export const uid = () =>
-  Math.random().toString(36).slice(2) + Date.now().toString(36);
+export const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 export const today = () => {
   const date = new Date();
@@ -265,13 +222,14 @@ export const brl = (n: number) =>
   });
 
 export const fmtDate = (value: string) => {
-  if (!value) return "";
   const [year, month, day] = value.split("-");
   return `${day}/${month}/${year}`;
 };
 
 export function exportBackup() {
   load();
+  if (loadFailed)
+    throw new Error("Não é possível exportar: os dados locais não puderam ser lidos.");
 
   const blob = new Blob([JSON.stringify(state, null, 2)], {
     type: "application/json",
@@ -288,13 +246,14 @@ export function exportBackup() {
 }
 
 export async function importBackup(file: File) {
-  const parsed = JSON.parse(await file.text());
+  if (file.size > 10 * 1024 * 1024) throw new Error("Backup muito grande (máximo 10 MB).");
+  const parsed: unknown = JSON.parse(await file.text());
 
-  if (!parsed || !Array.isArray(parsed.transactions)) {
+  if (!backupSchema.safeParse(parsed).success) {
     throw new Error("Arquivo inválido");
   }
 
-  setState(normalizeData(parsed));
+  setState(normalizeData(parsed as Partial<AppData>));
 }
 
 export function clearAll() {

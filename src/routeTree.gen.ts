@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AjustesRouteImport } from './routes/ajustes'
 import { Route as AssistenteRouteImport } from './routes/assistente'
 import { Route as FinancasRouteImport } from './routes/financas'
+import { Route as MetasRouteImport } from './routes/metas'
 import { Route as RotinaRouteImport } from './routes/rotina'
 import { Route as TreinosRouteImport } from './routes/treinos'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -37,6 +38,11 @@ const FinancasRoute = FinancasRouteImport.update({
   path: '/financas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MetasRoute = MetasRouteImport.update({
+  id: '/metas',
+  path: '/metas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RotinaRoute = RotinaRouteImport.update({
   id: '/rotina',
   path: '/rotina',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/ajustes': typeof AjustesRoute
   '/assistente': typeof AssistenteRoute
   '/financas': typeof FinancasRoute
+  '/metas': typeof MetasRoute
   '/rotina': typeof RotinaRoute
   '/treinos': typeof TreinosRoute
   '/api/chat': typeof ApiChatRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/ajustes': typeof AjustesRoute
   '/assistente': typeof AssistenteRoute
   '/financas': typeof FinancasRoute
+  '/metas': typeof MetasRoute
   '/rotina': typeof RotinaRoute
   '/treinos': typeof TreinosRoute
   '/api/chat': typeof ApiChatRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/ajustes': typeof AjustesRoute
   '/assistente': typeof AssistenteRoute
   '/financas': typeof FinancasRoute
+  '/metas': typeof MetasRoute
   '/rotina': typeof RotinaRoute
   '/treinos': typeof TreinosRoute
   '/api/chat': typeof ApiChatRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/ajustes'
     | '/assistente'
     | '/financas'
+    | '/metas'
     | '/rotina'
     | '/treinos'
     | '/api/chat'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/ajustes'
     | '/assistente'
     | '/financas'
+    | '/metas'
     | '/rotina'
     | '/treinos'
     | '/api/chat'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/ajustes'
     | '/assistente'
     | '/financas'
+    | '/metas'
     | '/rotina'
     | '/treinos'
     | '/api/chat'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   AjustesRoute: typeof AjustesRoute
   AssistenteRoute: typeof AssistenteRoute
   FinancasRoute: typeof FinancasRoute
+  MetasRoute: typeof MetasRoute
   RotinaRoute: typeof RotinaRoute
   TreinosRoute: typeof TreinosRoute
   ApiChatRoute: typeof ApiChatRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinancasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/metas': {
+      id: '/metas'
+      path: '/metas'
+      fullPath: '/metas'
+      preLoaderRoute: typeof MetasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rotina': {
       id: '/rotina'
       path: '/rotina'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   AjustesRoute: AjustesRoute,
   AssistenteRoute: AssistenteRoute,
   FinancasRoute: FinancasRoute,
+  MetasRoute: MetasRoute,
   RotinaRoute: RotinaRoute,
   TreinosRoute: TreinosRoute,
   ApiChatRoute: ApiChatRoute,
