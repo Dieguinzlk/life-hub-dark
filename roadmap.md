@@ -1,0 +1,4 @@
+- [x] Atualizar o modelo padrão Gemini e verificar testes.
+- [ ] Renovar a barra inferior flutuante, com acesso à IA à direita.
+- [ ] Renovar a Home com saldo, assistente, hábitos interativos e vencimentos.
+- [ ] Verificar interação, persistência e apresentação em celular.
