@@ -10,10 +10,9 @@ export async function POST(req: Request) {
     const { messages, today, snapshot } = await req.json();
 
     const result = streamText({
-      // Define o modelo desejado (ex: gemini-2.0-flash ou gemini-1.5-pro)
       model: google("gemini-2.0-flash"),
-      // Ajusta a criatividade/temperatura para 0.8
       temperature: 0.8,
+      maxRetries: 1, // Reduz as tentativas automáticas para evitar estourar o limite de tempo da Serverless Function
       messages,
       system: `Você é o assistente pessoal do Gerenciador de Vida. Data de hoje: ${today}`,
     });
@@ -23,7 +22,7 @@ export async function POST(req: Request) {
     console.error("Erro na API da IA:", error);
     return new Response(
       JSON.stringify({
-        error: "O assistente está temporariamente indisponível. Tente novamente em instantes.",
+        error: "O assistente está com alta demanda nos servidores. Tente novamente em alguns segundos.",
       }),
       {
         status: 503,
