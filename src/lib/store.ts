@@ -133,13 +133,21 @@ const empty: AppData = {
 };
 
 function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
-  const normalizedFinanceGoals = (Array.isArray(saved?.financeGoals) ? saved.financeGoals : []).map(g => ({
-    ...g,
-    initialAmount: g.initialAmount ?? 0,
-    frequency: g.frequency || "monthly",
-    contributions: Array.isArray(g.contributions) ? g.contributions : [],
-    startDate: g.startDate || g.createdAt || today(),
-  }));
+  const normalizedFinanceGoals = (Array.isArray(saved?.financeGoals) ? saved.financeGoals : []).map(g => {
+    const contributions = Array.isArray(g.contributions) ? g.contributions : [];
+    const initial = g.initialAmount ?? g.currentAmount ?? 0;
+    const contributionsTotal = contributions.reduce((acc, c) => acc + c.amount, 0);
+    const computedTotal = initial + contributionsTotal;
+
+    return {
+      ...g,
+      initialAmount: initial,
+      currentAmount: computedTotal, // Sincroniza o currentAmount com o total real
+      frequency: g.frequency || "monthly",
+      contributions,
+      startDate: g.startDate || g.createdAt || today(),
+    };
+  });
 
   return {
     ...empty,
@@ -208,13 +216,20 @@ export function useData(): AppData {
   );
 }
 
-// Helpers úteis para cálculo nas Metas
+// Helpers unificados e seguros para cálculo nas Metas
 export function getGoalSavedAmount(goal: FinanceGoal): number {
   const contributionsTotal = (goal.contributions || []).reduce((acc, c) => acc + c.amount, 0);
   const initial = goal.initialAmount ?? 0;
-  // Fallback seguro caso utilize currentAmount legado
   const base = initial > 0 ? initial : (goal.currentAmount > 0 ? goal.currentAmount : 0);
   return base + contributionsTotal;
+}
+
+export function syncGoalAmount(goal: FinanceGoal): FinanceGoal {
+  const totalSaved = getGoalSavedAmount(goal);
+  return {
+    ...goal,
+    currentAmount: totalSaved,
+  };
 }
 
 export const uid = () =>
