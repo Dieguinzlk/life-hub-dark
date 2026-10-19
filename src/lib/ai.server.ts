@@ -1,5 +1,5 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { APICallError, convertToModelMessages, streamText, tool, type UIMessage } from "ai";
+import { APICallError, convertToModelMessages, streamText, tool, validateUIMessages, type UIMessage } from "ai";
 import { z } from "zod";
 
 const date = z.string().nullable().describe("Data no formato AAAA-MM-DD, ou null para hoje");
@@ -95,23 +95,50 @@ function errorText(error: unknown): string {
   if (status === 429) return "Limite de uso atingido no momento. Aguarde alguns instantes e tente de novo.";
   if (status === 401 || status === 403) return "O Gemini recusou o acesso. Verifique a chave e as permissões no servidor.";
   if (status === 400) return "O Gemini não aceitou a solicitação. Verifique o modelo configurado no servidor.";
+  if (status === 404) return "O modelo configurado não está disponível no Gemini. Verifique GEMINI_MODEL no ambiente do deploy.";
   return "Não foi possível falar com a IA agora. Verifique a conexão e tente de novo.";
 }
 
 export async function handleChat(request: Request): Promise<Response> {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin) return Response.json({ error: "Origem da solicitação não permitida." }, { status: 403 });
+  const maxBytes = 128 * 1024;
+  if (Number(request.headers.get("content-length")) > maxBytes) return Response.json({ error: "Solicitação muito grande." }, { status: 413 });
+  let raw = "";
+  if (request.body) {
+    const reader = request.body.getReader();
+    const decoder = new TextDecoder();
+    let bytes = 0;
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      bytes += chunk.value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel();
+        return Response.json({ error: "Solicitação muito grande." }, { status: 413 });
+      }
+      raw += decoder.decode(chunk.value, { stream: true });
+    }
+    raw += decoder.decode();
+  }
+  let body: { messages: UIMessage[]; snapshot?: unknown; today?: string | undefined };
+  try {
+    const parsed = z.object({ messages: z.array(z.unknown()).min(1).max(40), snapshot: z.unknown().optional(), today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }).parse(JSON.parse(raw));
+    const messages = await validateUIMessages({ messages: parsed.messages, tools });
+    const last = messages.at(-1);
+    if (!last || last.role === "system" || messages.some(message => message.role === "system")) throw new Error("Invalid role");
+    if (last.role === "user" && !last.parts.some(part => part.type === "text" && part.text.trim().length > 0)) throw new Error("Empty message");
+    if (messages.some(message => message.parts.some(part => part.type === "text" && part.text.length > 8000))) throw new Error("Long message");
+    body = { ...parsed, messages };
+  } catch {
+    return Response.json({ error: "Requisição inválida: verifique a mensagem e o tamanho da conversa." }, { status: 400 });
+  }
   const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) return Response.json({ code: "AI_NOT_CONFIGURED", error: "O Gemini ainda não está configurado neste ambiente. Configure GEMINI_API_KEY no servidor e tente novamente." }, { status: 409 });
   const google = createGoogleGenerativeAI({ apiKey });
   const model = process.env["GEMINI_MODEL"] || "gemini-2.0-flash";
 
-  let body: { messages?: UIMessage[]; snapshot?: unknown; today?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Requisição inválida." }, { status: 400 });
-  }
-  const messages = Array.isArray(body.messages) ? body.messages.slice(-40) : [];
-  if (messages.length === 0) return Response.json({ error: "Mensagem vazia." }, { status: 400 });
+  const messages = body.messages;
 
   const today = typeof body.today === "string" ? body.today.slice(0, 10) : new Date().toISOString().slice(0, 10);
   const snapshot = body.snapshot ? JSON.stringify(body.snapshot).slice(0, 20000) : null;
