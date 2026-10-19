@@ -1,4 +1,3 @@
-
 import { useSyncExternalStore } from "react";
 import { backupSchema } from "@/lib/data-validation";
 import { toast } from "sonner";
@@ -121,6 +120,17 @@ export type BusinessPayable = {
   paid: boolean;
 };
 
+export type FinancialPlan = {
+  income: number;
+  targetMonths: number;
+  essentialLimit: number;
+  wantsLimit: number;
+  savingsLimit: number;
+  debtPayoffMonthly: number;
+  reserveMonthly: number;
+  strategies: string[];
+};
+
 export type AppData = {
   version: 1;
   transactions: Transaction[];
@@ -136,6 +146,7 @@ export type AppData = {
   businessSales: BusinessSale[];
   businessCosts: BusinessCost[];
   businessPayables: BusinessPayable[];
+  financialPlan?: FinancialPlan | null;
 };
 
 const KEY = "gerenciador-de-vida:v1";
@@ -155,6 +166,7 @@ const empty: AppData = {
   businessSales: [],
   businessCosts: [],
   businessPayables: [],
+  financialPlan: null,
 };
 
 function normalizeData(
@@ -194,6 +206,7 @@ function normalizeData(
     businessPayables: Array.isArray(saved?.businessPayables)
       ? saved.businessPayables
       : [],
+    financialPlan: saved?.financialPlan || null,
   };
 }
 
