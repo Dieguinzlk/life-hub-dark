@@ -24,7 +24,9 @@ function Assistente() {
   const data = useData();
   const dataRef = useRef(data);
   dataRef.current = data;
-
+  const [share, setShare] = useState(false);
+  const shareRef = useRef(share);
+  shareRef.current = share;
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -46,11 +48,7 @@ function Assistente() {
           return response;
         },
         prepareSendMessagesRequest: ({ messages }) => ({
-          body: { 
-            messages, 
-            today: today(), 
-            snapshot: buildSnapshot(dataRef.current) // Sempre envia o snapshot automaticamente
-          },
+          body: { messages, today: today(), snapshot: shareRef.current ? buildSnapshot(dataRef.current) : null },
         }),
       }),
   );
@@ -76,7 +74,7 @@ function Assistente() {
   };
 
   const resolve = (toolCallId: string, tool: string, output: unknown) => {
-    void addToolOutput({ tool, toolCallId, output } as never);
+    void addToolOutput({ tool: tool as never, toolCallId, output: output as never });
   };
 
   return (
@@ -91,6 +89,14 @@ function Assistente() {
         ) : undefined
       }
     >
+      <label className="mb-4 flex items-center justify-between gap-3 rounded-2xl border bg-card p-3 text-sm">
+        <span>
+          <span className="font-semibold">Compartilhar meus dados</span>
+          <span className="block text-xs text-muted-foreground">Envia um resumo de finanças, tarefas, treinos e metas junto com suas mensagens.</span>
+        </span>
+        <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
+      </label>
+
       {messages.length === 0 && (
         <Card className="mb-4 space-y-2 text-sm text-muted-foreground">
           <p className="flex items-center gap-2 font-semibold text-foreground"><Bot className="h-4 w-4 text-primary" /> Experimente pedir:</p>
@@ -156,9 +162,7 @@ function MessageView({ message, onResolve, data }: { message: UIMessage; onResol
 }
 
 function ActionCard({ part, onResolve, data }: { part: Parameters<typeof getToolName>[0]; onResolve: (id: string, tool: string, out: unknown) => void; data: ReturnType<typeof useData> }) {
-  const [submitting, setSubmitting] = useState(false);
   const name = getToolName(part);
-
   if (part.state === "input-streaming") return <Card className="text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Preparando ação…</Card>;
   if (part.state === "output-available") {
     const out = part.output as { ok?: boolean; message?: string };
@@ -179,56 +183,23 @@ function ActionCard({ part, onResolve, data }: { part: Parameters<typeof getTool
     return (
       <Card className="space-y-2 border-destructive/50">
         <p className="text-destructive">Ação inválida: {invalid}</p>
-        <button 
-          disabled={submitting}
-          onClick={() => {
-            setSubmitting(true);
-            onResolve(part.toolCallId, name, { ok: false, message: `Não executado: ${invalid}` });
-          }} 
-          className="rounded-xl border px-3 py-2 disabled:opacity-50"
-        >
-          Avisar a IA
-        </button>
+        <button onClick={() => onResolve(part.toolCallId, name, { ok: false, message: `Não executado: ${invalid}` })} className="rounded-xl border px-3 py-2">Avisar a IA</button>
       </Card>
     );
   }
-
-  const handleConfirm = () => {
-    if (submitting) return;
-    setSubmitting(true);
-    try {
-      const message = prepared.apply();
-      onResolve(part.toolCallId, name, { ok: true, message });
-    } catch (e) {
-      onResolve(part.toolCallId, name, { ok: false, message: e instanceof Error ? e.message : "Falhou" });
-    }
-  };
-
-  const handleCancel = () => {
-    if (submitting) return;
-    setSubmitting(true);
-    onResolve(part.toolCallId, name, { ok: false, message: "Cancelado pelo usuário" });
-  };
-
   return (
     <Card className="space-y-3 border-primary/50">
       <p className="text-xs font-semibold uppercase tracking-wide text-primary">Confirmar ação</p>
       <p>{prepared.summary}</p>
       <div className="flex gap-2">
         <button
-          disabled={submitting}
-          onClick={handleConfirm}
-          className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-primary py-2 font-semibold text-primary-foreground disabled:opacity-50"
-        >
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Confirmar
-        </button>
-        <button 
-          disabled={submitting}
-          onClick={handleCancel} 
-          className="flex flex-1 items-center justify-center gap-1 rounded-xl border py-2 disabled:opacity-50"
-        >
-          <X className="h-4 w-4" /> Cancelar
-        </button>
+          onClick={() => {
+            try { onResolve(part.toolCallId, name, { ok: true, message: prepared.apply() }); }
+            catch (e) { onResolve(part.toolCallId, name, { ok: false, message: e instanceof Error ? e.message : "Falhou" }); }
+          }}
+          className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-primary py-2 font-semibold text-primary-foreground"
+        ><Check className="h-4 w-4" /> Confirmar</button>
+        <button onClick={() => onResolve(part.toolCallId, name, { ok: false, message: "Cancelado pelo usuário" })} className="flex flex-1 items-center justify-center gap-1 rounded-xl border py-2"><X className="h-4 w-4" /> Cancelar</button>
       </div>
     </Card>
   );

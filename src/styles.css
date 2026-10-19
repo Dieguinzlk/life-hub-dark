@@ -49,6 +49,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-neon: var(--neon);
+  --color-neon-foreground: var(--neon-foreground);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
 }
 
 :root {
@@ -89,6 +93,13 @@
   --sidebar-ring: oklch(0.8 0.13 180);
   --gradient-hero: linear-gradient(140deg, oklch(0.42 0.09 185), oklch(0.26 0.04 210));
   --shadow-glow: 0 12px 30px -12px color-mix(in oklab, var(--primary) 45%, transparent);
+  --neon: oklch(0.84 0.19 155);
+  --neon-foreground: oklch(0.17 0.025 160);
+  --glass: oklch(0.22 0.009 230 / 88%);
+  --glass-border: oklch(1 0 0 / 10%);
+  --gradient-budget: linear-gradient(125deg, oklch(0.32 0.035 175), oklch(0.23 0.013 230) 65%, oklch(0.25 0.025 205));
+  --gradient-assistant: linear-gradient(115deg, oklch(0.29 0.045 165), oklch(0.22 0.012 230));
+  --shadow-float: 0 16px 40px -12px oklch(0.08 0.005 230 / 65%);
 }
 
 @layer base {
@@ -115,3 +126,19 @@
 @utility pb-safe {
   padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
 }
+
+.premium-card { border: 1px solid var(--glass-border); border-radius: 24px; background: var(--glass); box-shadow: var(--shadow-float); backdrop-filter: blur(24px); }
+.budget-card { background: var(--gradient-budget); }
+.assistant-card { background: var(--gradient-assistant); }
+.pill-nav { background: var(--glass); border-color: var(--glass-border); box-shadow: var(--shadow-float); bottom: calc(env(safe-area-inset-bottom) + 14px); }
+.home-enter { animation: home-arrive 280ms ease-out both; }
+.habit-check { transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease; }
+.habit-check:active { transform: scale(.97); }
+.home-progress { appearance: none; overflow: hidden; border-radius: 999px; background: var(--secondary); }
+.home-progress::-webkit-progress-bar { background: var(--secondary); }
+.home-progress::-webkit-progress-value { background: var(--primary); transition: width 180ms ease; }
+.home-progress::-moz-progress-bar { background: var(--primary); }
+.habit-check[aria-pressed="true"] .check-mark { animation: check-arrive 180ms ease-out; }
+@keyframes home-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes check-arrive { from { transform: scale(.6); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .home-enter, .check-mark { animation: none !important; } .habit-check, .pill-nav a { transition: none !important; } }

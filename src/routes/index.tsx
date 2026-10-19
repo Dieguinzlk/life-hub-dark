@@ -1,224 +1,479 @@
+
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { 
-  Sparkles, 
-  ChevronRight, 
-  Bell, 
-  Flame, 
-  TrendingDown, 
-  TrendingUp,
-  Wallet,
-  CheckCircle2,
-  Circle,
-  ArrowRight
+import {
+  Check,
+  Plus,
+  Trash2,
+  Flame,
+  ArrowUpRight,
+  ArrowDownRight,
+  CalendarClock,
+  Target,
+  PiggyBank,
+  ListChecks as ListIcon, Bell, Settings, Sparkles, ArrowRight, ChevronRight, CheckCircle2, Circle, Wallet, Activity,
 } from "lucide-react";
-import { useData, today, brl, update } from "@/lib/store";
+import { Card } from "@/components/AppShell";
+import { Button } from "@/components/ui/button";
+import { dailyScore, toggleHabitDate } from "@/lib/home-metrics";
+import { useData, update, uid, today, brl, fmtDate } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
-  component: HomeDashboard,
+  head: () => ({
+    meta: [
+      { title: "Início — Gerenciador de Vida" },
+      {
+        name: "description",
+        content: "Resumo do seu dia: tarefas, hábitos e finanças em um só lugar.",
+      },
+      { property: "og:title", content: "Início — Gerenciador de Vida" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      {
+        property: "og:description",
+        content: "Finanças, rotina, tarefas, hábitos e metas em um só lugar.",
+      },
+    ],
+  }),
+  component: Index,
 });
 
-export function HomeDashboard() {
+function Index() {
   const data = useData();
-  const refMonth = today().slice(0, 7);
+  const t = today();
+  const month = t.slice(0, 7);
 
-  // Finanças do mês atual
-  const monthTx = data.transactions.filter((t) => t.date.startsWith(refMonth));
-  const receitas = monthTx.filter((t) => t.type === "receita").reduce((acc, t) => acc + t.amount, 0);
-  const despesas = monthTx.filter((t) => t.type === "despesa").reduce((acc, t) => acc + t.amount, 0);
-  const saldoTotal = receitas - despesas;
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [task, setTask] = useState("");
+  const [habit, setHabit] = useState("");
+  const [showGoalForm, setShowGoalForm] = useState(false);
+  const [goalName, setGoalName] = useState("");
+  const [goalTarget, setGoalTarget] = useState("");
+  const [goalSaved, setGoalSaved] = useState("0");
+  const [goalDeadline, setGoalDeadline] = useState("");
 
-  // Hábitos do dia
-  const todayStr = today();
-  const habits = data.habits || [];
-  const habitsDoneToday = habits.filter((h) => h.doneDates.includes(todayStr)).length;
-  const habitScore = habits.length > 0 ? Math.round((habitsDoneToday / habits.length) * 10) : 0;
+  const monthTx = data.transactions.filter((x) =>
+    x.date.startsWith(month)
+  );
+  const inc = monthTx
+    .filter((x) => x.type === "receita")
+    .reduce((s, x) => s + x.amount, 0);
+  const exp = monthTx
+    .filter((x) => x.type === "despesa")
+    .reduce((s, x) => s + x.amount, 0);
+  const balance = inc - exp;
+  const score = dailyScore(data.tasks, data.habits, t);
+  const dailyAmounts = Array.from({ length: 7 }, (_, i) => monthTx.filter((x) => Math.min(6, Math.floor((Number(x.date.slice(8)) - 1) / 5)) === i).reduce((sum, x) => sum + x.amount, 0));
+  const maxAmount = Math.max(1, ...dailyAmounts);
+  const upcoming = data.bills
+    .filter((b) => !b.paid)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, 4);
 
-  const toggleHabitToday = (habitId: string) => {
+  const tasks = data.tasks.filter((x) => x.date === t || !x.done);
+  const doneCount = tasks.filter((x) => x.done).length;
+  const habitsDone = data.habits.filter((h) =>
+    h.doneDates.includes(t)
+  ).length;
+
+  const goals = data.financeGoals ?? [];
+
+  const hour = new Date().getHours();
+  const greet =
+    hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+
+  const dateLabel = new Date().toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
+  function saveGoal(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const target = Number(goalTarget);
+    const saved = Number(goalSaved);
+
+    if (
+      !goalName.trim() ||
+      !Number.isFinite(target) ||
+      target <= 0 ||
+      !Number.isFinite(saved) ||
+      saved < 0 ||
+      saved > target
+    ) {
+      return;
+    }
+
     update((d) => ({
       ...d,
-      habits: d.habits.map((h) => {
-        if (h.id !== habitId) return h;
-        const exists = h.doneDates.includes(todayStr);
-        return {
-          ...h,
-          doneDates: exists ? h.doneDates.filter((date: string) => date !== todayStr) : [...h.doneDates, todayStr],
-        };
-      }),
+      financeGoals: [
+        ...(d.financeGoals ?? []),
+        {
+          id: uid(),
+          name: goalName.trim(),
+          targetAmount: target,
+          currentAmount: saved,
+          deadline: goalDeadline || undefined,
+          createdAt: today(),
+        },
+      ],
     }));
-  };
 
-  // Contas pendentes
-  const contasPendentes = data.bills.filter((b) => !b.paid).slice(0, 2);
+    setGoalName("");
+    setGoalTarget("");
+    setGoalSaved("0");
+    setGoalDeadline("");
+    setShowGoalForm(false);
+  }
 
   return (
-    <div className="min-h-screen bg-[#07080C] text-slate-100 p-4 pb-32 space-y-6 max-w-md mx-auto font-sans antialiased">
-      
-      {/* 1. Header do Usuário */}
-      <header className="flex items-center justify-between pt-2">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-200 p-[2px]">
-            <div className="h-full w-full bg-[#0D0E15] rounded-full flex items-center justify-center font-bold text-emerald-400">
-              D
-            </div>
-          </div>
-          <div>
-            <p className="text-[11px] text-slate-400 font-medium">Bem-vindo de volta,</p>
-            <h1 className="text-base font-bold text-white tracking-tight">Dieguin 👋</h1>
-          </div>
+    <main className="home-enter mx-auto min-h-screen max-w-md px-5 pb-32 pt-7">
+      <header className="mb-7 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button asChild variant="ghost" className="h-12 w-12 shrink-0 rounded-full border border-primary/25 bg-accent p-0 font-display text-lg text-primary"><Link to="/ajustes" aria-label="Perfil e ajustes">D</Link></Button>
+          <div className="min-w-0"><p className="text-xs text-muted-foreground">{greet}, Dieguin</p><h1 className="mt-1 text-xl font-semibold">Seu dia, em equilíbrio.</h1></div>
         </div>
-        <button className="h-10 w-10 rounded-2xl bg-[#12141D] border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">
-          <Bell className="h-5 w-5" />
-        </button>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" aria-label="Notificações" aria-expanded={showNotifications} onClick={() => setShowNotifications(!showNotifications)} className="relative rounded-full border border-glass-border"><Bell />{upcoming.length > 0 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-warning" />}</Button>
+          <Button asChild variant="ghost" size="icon" className="rounded-full"><Link to="/ajustes" aria-label="Ajustes"><Settings /></Link></Button>
+        </div>
       </header>
-
-      {/* 2. Banner Principal: Orçamento e Balanço */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#141824] to-[#0D0F17] p-5 border border-white/10 shadow-2xl space-y-5">
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Saldo Atual do Mês</span>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-3xl font-extrabold text-white tracking-tight">{brl(saldoTotal)}</span>
-            </div>
-          </div>
-          <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-            <Wallet className="h-5 w-5" />
-          </div>
+      <p className="mb-3 text-[11px] capitalize text-muted-foreground">{dateLabel}</p>
+      {showNotifications && <section className="premium-card mb-4 p-4" aria-label="Avisos"><h2 className="mb-2 text-sm font-semibold">Seus avisos</h2>{upcoming.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma conta pendente.</p> : upcoming.map(b => <p key={b.id} className="py-1 text-sm">{b.description} · {fmtDate(b.dueDate)}</p>)}</section>}
+      <section className="premium-card budget-card relative mb-4 overflow-hidden p-5" aria-label="Resumo financeiro do mês">
+        <div className="flex items-center justify-between"><p className="text-xs text-muted-foreground">Saldo do mês</p><span className="rounded-full border border-glass-border px-2.5 py-1 text-[10px] text-accent-foreground">{new Date().toLocaleDateString("pt-BR", { month: "long" })}</span></div>
+        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_72px] items-end gap-2"><p className="break-words font-display text-3xl font-semibold">{brl(balance)}</p><div className="flex h-10 items-end gap-1" role="img" aria-label="Movimentação financeira em sete períodos do mês">{dailyAmounts.map((value, i) => <div key={i} className="w-2 rounded-t-sm bg-primary/60" style={{ height: `${Math.max(8, value / maxAmount * 100)}%` }} />)}</div></div>
+        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-glass-border pt-4">
+          <div><p className="mb-1 flex items-center gap-1.5 text-[11px] text-muted-foreground"><ArrowUpRight className="h-4 w-4 text-success" />Receitas</p><p className="break-words text-base font-semibold">{brl(inc)}</p></div>
+          <div className="border-l border-glass-border pl-4"><p className="mb-1 flex items-center gap-1.5 text-[11px] text-muted-foreground"><ArrowDownRight className="h-4 w-4 text-destructive" />Despesas</p><p className="break-words text-base font-semibold">{brl(exp)}</p></div>
         </div>
-
-        {/* Grid de Balanço Rápido */}
-        <div className="grid grid-cols-2 gap-3 pt-2">
-          <div className="bg-[#1A1D2B]/80 rounded-2xl p-3.5 border border-white/5">
-            <div className="flex items-center gap-2 text-slate-400 mb-1">
-              <TrendingUp className="h-4 w-4 text-emerald-400" />
-              <span className="text-xs font-medium">Receitas</span>
-            </div>
-            <p className="text-lg font-bold text-white">{brl(receitas)}</p>
-          </div>
-
-          <div className="bg-[#1A1D2B]/80 rounded-2xl p-3.5 border border-white/5">
-            <div className="flex items-center gap-2 text-slate-400 mb-1">
-              <TrendingDown className="h-4 w-4 text-rose-400" />
-              <span className="text-xs font-medium">Despesas</span>
-            </div>
-            <p className="text-lg font-bold text-rose-400">{brl(despesas)}</p>
-          </div>
-        </div>
+        <Button asChild variant="link" className="mt-3 h-auto p-0 text-[11px]"><Link to="/financas">Meu panorama financeiro <ArrowRight /></Link></Button>
       </section>
+      <section className="premium-card assistant-card mb-5 p-4" aria-label="Assistente Gemini">
+        <div className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-neon text-neon-foreground"><Sparkles className="h-5 w-5" /></span><div><h2 className="text-sm font-semibold">Um passo à frente.</h2><p className="mt-1 text-[11px] text-muted-foreground">Seu assistente pessoal · Gemini</p></div><Button asChild variant="ghost" size="icon" className="rounded-full"><Link to="/assistente" aria-label="Conversar com Gemini"><ArrowUpRight /></Link></Button></div>
+        <div className="mt-4 grid grid-cols-2 gap-2"><Button asChild variant="outline" className="h-9 rounded-full border-primary/20 bg-background/20 px-2 text-[10px]"><Link to="/assistente"><Wallet />Minhas finanças</Link></Button><Button asChild variant="outline" className="h-9 rounded-full border-primary/20 bg-background/20 px-2 text-[10px]"><Link to="/assistente"><ListIcon />Organizar meu dia</Link></Button></div>
+      </section>
+      <div className="mb-3 flex items-center justify-between"><h2 className="text-base font-semibold">Seu ritmo de hoje</h2><span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Activity className="h-3 w-3 text-primary" />Em movimento</span></div>
+      <section className="premium-card mb-4 p-4" aria-label="Produtividade do dia">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3"><div><p className="text-xs text-muted-foreground">Score de produtividade</p><p className="mt-1 text-sm">{score === 100 ? "Dia completo. Boa!" : "Cada pequeno passo conta."}</p></div><p className="font-display text-3xl font-semibold text-primary"><span data-testid="daily-score">{score}</span><span className="text-xs text-muted-foreground"> /100</span></p></div>
+        <progress className="home-progress mt-4 h-1.5 w-full" value={score} max={100} aria-label="Produtividade" />
+        <div className="mt-3 grid grid-cols-2 gap-3 text-[11px] text-muted-foreground"><span>{doneCount}/{tasks.length} tarefas concluídas</span><span className="text-right">{habitsDone}/{data.habits.length} hábitos de hoje</span></div>
+      </section>
+      <Card className="premium-card mb-4">
+        <h2 className="mb-3 font-semibold">Tarefas de hoje</h2>
 
-      {/* 3. Card do Assistente de IA */}
-      <section className="rounded-3xl bg-gradient-to-r from-emerald-950/40 via-[#10141D] to-[#121622] p-5 border border-emerald-500/30 shadow-lg space-y-4 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-3xl pointer-events-none" />
-        
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-emerald-500 flex items-center justify-center text-slate-950 shadow-md shadow-emerald-500/20">
-              <Sparkles className="h-4 w-4 fill-slate-950" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white">Assistente Pessoal</h2>
-              <p className="text-[10px] uppercase font-bold tracking-wider text-emerald-400">IA · Inteligência do seu dia</p>
-            </div>
-          </div>
-        </div>
+        <form
+          className="mb-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!task.trim()) return;
 
-        <p className="text-xs text-slate-300 leading-relaxed">
-          Pronto para organizar suas finanças ou planejar suas metas? Converse com o Gemini agora.
-        </p>
+            update((d) => ({
+              ...d,
+              tasks: [
+                ...d.tasks,
+                {
+                  id: uid(),
+                  title: task.trim(),
+                  done: false,
+                  date: t,
+                },
+              ],
+            }));
 
-        <Link 
-          to="/assistente" 
-          className="flex items-center justify-between w-full bg-[#171B26] hover:bg-[#1E2332] text-xs font-bold text-emerald-400 p-3 rounded-2xl border border-emerald-500/20 transition group"
+            setTask("");
+          }}
         >
-          <span>Abrir Assistente Inteligente</span>
-          <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition" />
-        </Link>
-      </section>
+          <input
+            value={task}
+            onChange={(e) => setTask(e.target.value)}
+            placeholder="Nova tarefa..."
+            className="h-11 min-w-0 flex-1 rounded-xl border bg-input/40 px-3 text-base outline-none focus:border-primary"
+          />
+          <Button
+            type="submit"
+            aria-label="Adicionar tarefa"
+            className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-primary-foreground"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        </form>
 
-      {/* 4. Rotina & Hábitos do Dia */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-white">Hábitos de Hoje</h3>
-          <Link to="/rotina" className="text-xs text-emerald-400 font-medium flex items-center gap-0.5">
-            Gerenciar rotina <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+        {tasks.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Nenhuma tarefa por enquanto.
+          </p>
+        )}
 
-        {/* Card de Score Diário */}
-        <div className="rounded-3xl bg-[#12141D] p-4 border border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 flex items-center justify-center bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400 font-extrabold text-base">
-              {habitScore}
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-white">Score de Produtividade</h4>
-              <p className="text-xs text-emerald-400 font-medium">
-                {habitsDoneToday} de {habits.length} concluídos
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Lista interativa rápida de hábitos */}
-        <div className="space-y-2">
-          {habits.slice(0, 3).map((h: any) => {
-            const isDone = h.doneDates.includes(todayStr);
-            return (
-              <div
-                key={h.id}
-                onClick={() => toggleHabitToday(h.id)}
-                className={`flex items-center justify-between p-3.5 rounded-2xl border transition cursor-pointer ${
-                  isDone 
-                    ? "bg-[#10151E] border-emerald-500/30 text-slate-300" 
-                    : "bg-[#12141D] border-white/5 text-slate-400"
+        <ul className="space-y-1">
+          {tasks.map((x) => (
+            <li key={x.id} className="flex items-center gap-3 py-1.5">
+              <Button
+                type="button"
+                aria-label={`${x.done ? "Reabrir" : "Concluir"} tarefa ${x.title}`}
+                onClick={() =>
+                  update((d) => ({
+                    ...d,
+                    tasks: d.tasks.map((y) =>
+                      y.id === x.id
+                        ? { ...y, done: !y.done, date: t }
+                        : y
+                    ),
+                  }))
+                }
+                className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 ${
+                  x.done
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-muted-foreground"
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  {isDone ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-slate-600 shrink-0" />
-                  )}
-                  <span className={`text-xs font-semibold ${isDone ? "line-through text-slate-500" : "text-white"}`}>
-                    {h.name}
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-[#1A1D2B] px-2 py-0.5 rounded-md text-slate-400">
-                  Hábito
-                </span>
-              </div>
+                {x.done && <Check className="h-4 w-4" />}
+              </Button>
+
+              <span
+                className={`min-w-0 flex-1 break-words ${
+                  x.done ? "text-muted-foreground line-through" : ""
+                }`}
+              >
+                {x.title}
+              </span>
+
+              <Button
+                type="button"
+                aria-label={`Excluir tarefa ${x.title}`}
+                onClick={() =>
+                  update((d) => ({
+                    ...d,
+                    tasks: d.tasks.filter((y) => y.id !== x.id),
+                  }))
+                }
+                className="text-muted-foreground"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card className="premium-card">
+        <h2 className="mb-3 flex items-center gap-2 font-semibold"><Flame className="h-4 w-4 text-warning" />Hábitos de hoje</h2>
+
+        <form
+          className="mb-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!habit.trim()) return;
+
+            update((d) => ({
+              ...d,
+              habits: [
+                ...d.habits,
+                { id: uid(), name: habit.trim(), doneDates: [] },
+              ],
+            }));
+
+            setHabit("");
+          }}
+        >
+          <input
+            value={habit}
+            onChange={(e) => setHabit(e.target.value)}
+            placeholder="Novo hábito (ex.: beber água)"
+            className="h-11 min-w-0 flex-1 rounded-xl border bg-input/40 px-3 text-base outline-none focus:border-primary"
+          />
+
+          <Button
+            type="submit"
+            aria-label="Adicionar hábito"
+            className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-primary-foreground"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        </form>
+
+        {data.habits.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Crie seu primeiro hábito.
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {data.habits.map((h) => {
+            const done = h.doneDates.includes(t);
+
+            return (
+              <Button
+                type="button"
+                key={h.id}
+                aria-label={`Hábito ${h.name}`}
+                aria-pressed={done}
+                variant="ghost"
+                onClick={() => update((d) => ({ ...d, habits: toggleHabitDate(d.habits, h.id, t) }))}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (confirm(`Excluir o hábito "${h.name}"?`)) {
+                    update((d) => ({
+                      ...d,
+                      habits: d.habits.filter((y) => y.id !== h.id),
+                    }));
+                  }
+                }}
+                className={`habit-check h-auto min-h-12 w-full justify-start gap-3 whitespace-normal rounded-xl border px-3 py-3 text-left text-sm ${
+                  done
+                    ? "border-primary bg-accent text-accent-foreground"
+                    : "border-glass-border bg-background/20"
+                }`}
+              >
+                {done ? <CheckCircle2 className="check-mark text-primary" /> : <Circle className="text-muted-foreground" />}
+                <span className="min-w-0 flex-1 break-words">{h.name}</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">{done ? "Feito" : "Hoje"}</span>
+              </Button>
             );
           })}
         </div>
+
+      </Card>
+      <section id="metas" className="mt-5 scroll-mt-6">
+      <Card className="premium-card">
+        <h2 className="mb-3 flex items-center gap-2 font-semibold">
+          <Target className="h-5 w-5 text-primary" />
+          Minhas metas financeiras
+        </h2>
+
+        {goals.length === 0 && !showGoalForm && (
+          <p className="mb-3 text-sm text-muted-foreground">
+            Transforme seus planos em metas e acompanhe quanto falta para
+            alcançá-las.
+          </p>
+        )}
+
+        {goals.map((goal) => {
+          const percent =
+            goal.targetAmount > 0
+              ? Math.min(
+                  100,
+                  (goal.currentAmount / goal.targetAmount) * 100
+                )
+              : 0;
+
+          const remaining = Math.max(
+            0,
+            goal.targetAmount - goal.currentAmount
+          );
+
+          return (
+            <div
+              key={goal.id}
+              className="mb-3 rounded-xl border p-3"
+            >
+              <div className="flex items-start gap-2">
+                <PiggyBank className="mt-1 h-5 w-5 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{goal.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Guardado: {brl(goal.currentAmount)} de{" "}
+                    {brl(goal.targetAmount)}
+                  </p>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {percent.toFixed(1)}% concluído · Faltam{" "}
+                    {brl(remaining)}
+                  </p>
+                  {goal.deadline && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Prazo: {fmtDate(goal.deadline)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {!showGoalForm ? (
+          <button
+            type="button"
+            onClick={() => setShowGoalForm(true)}
+            className="w-full rounded-xl bg-primary px-4 py-3 font-semibold text-primary-foreground"
+          >
+            <Plus className="mr-1 inline h-4 w-4" />
+            Criar minha meta
+          </button>
+        ) : (
+          <form className="space-y-3" onSubmit={saveGoal}>
+            <input
+              required
+              value={goalName}
+              onChange={(e) => setGoalName(e.target.value)}
+              placeholder="Nome da meta (ex.: comprar um carro)"
+              className="h-11 w-full rounded-xl border bg-input/40 px-3"
+            />
+
+            <input
+              required
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={goalTarget}
+              onChange={(e) => setGoalTarget(e.target.value)}
+              placeholder="Quanto quer juntar? (R$)"
+              className="h-11 w-full rounded-xl border bg-input/40 px-3"
+            />
+
+            <input
+              required
+              type="number"
+              min="0"
+              step="0.01"
+              value={goalSaved}
+              onChange={(e) => setGoalSaved(e.target.value)}
+              placeholder="Quanto já guardou? (R$)"
+              className="h-11 w-full rounded-xl border bg-input/40 px-3"
+            />
+
+            <label className="block text-sm text-muted-foreground">
+              Prazo para alcançar a meta
+            </label>
+
+            <input
+              type="date"
+              value={goalDeadline}
+              onChange={(e) => setGoalDeadline(e.target.value)}
+              className="h-11 w-full rounded-xl border bg-input/40 px-3"
+            />
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="flex-1 rounded-xl bg-primary px-3 py-3 font-semibold text-primary-foreground"
+              >
+                Salvar meta
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowGoalForm(false)}
+                className="rounded-xl border px-3 py-3"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+      </Card>
       </section>
 
-      {/* 5. Próximos Vencimentos */}
-      {contasPendentes.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white">Próximas Contas</h3>
-            <Link to="/financas" className="text-xs text-emerald-400 font-medium flex items-center gap-0.5">
-              Ver finanças <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {contasPendentes.map((conta: any) => (
-              <div key={conta.id} className="bg-[#12141D] rounded-3xl p-4 border border-white/5 space-y-2">
-                <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                  <Flame className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-slate-300 truncate">{conta.description}</p>
-                  <p className="text-base font-extrabold text-white mt-0.5">{brl(conta.amount)}</p>
-                </div>
-                <p className="text-[10px] font-semibold text-amber-400">Vence: {conta.dueDate}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-    </div>
+      <section className="mt-5" aria-label="Próximos vencimentos"><div className="mb-3 flex items-center justify-between"><h2 className="text-base font-semibold">Próximos vencimentos</h2><Button asChild variant="link" className="h-auto p-0 text-[11px]"><Link to="/financas">Ver todos<ChevronRight /></Link></Button></div>
+        {upcoming.length === 0 ? <p className="py-3 text-sm text-muted-foreground">Tudo em dia. Nenhuma conta pendente.</p> : <div className="grid grid-cols-2 gap-3">{upcoming.map(b => <Link key={b.id} to="/financas" className="premium-card min-w-0 p-4 transition-transform duration-200 hover:-translate-y-0.5"><CalendarClock className={`mb-3 h-5 w-5 ${b.dueDate <= t ? "text-destructive" : "text-warning"}`} /><p className="break-words text-xs text-muted-foreground">{b.description}</p><p className="mt-1 break-words text-base font-semibold">{brl(b.amount)}</p><p className={`mt-3 text-[10px] ${b.dueDate <= t ? "text-destructive" : "text-muted-foreground"}`}>{b.dueDate < t ? "Atrasada" : b.dueDate === t ? "Vence hoje" : "Vence " + fmtDate(b.dueDate)}</p></Link>)}</div>}
+      </section>
+    </main>
   );
 }

@@ -1,46 +1,53 @@
-import { Link, useLocation } from "@tanstack/react-router";
-import { Home, Wallet, Calendar, Target, Sparkles } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Home, Wallet, ListChecks, Dumbbell, Target, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { ReactNode } from "react";
+
+export function Page({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="mx-auto min-h-screen max-w-md px-4 pb-28 pt-6">
+      <header className="mb-5 flex items-end justify-between gap-3">
+        <div>
+          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        </div>
+        {action}
+      </header>
+      {children}
+    </div>
+  );
+}
+
+export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <section className={`rounded-2xl border bg-card p-4 ${className}`}>{children}</section>;
+}
+
 
 export function BottomNav() {
-  const location = useLocation();
-  const currentPath = location.pathname;
-
-  const navItems = [
-    { to: "/", label: "Início", icon: Home },
-    { to: "/financas", label: "Finanças", icon: Wallet },
-    { to: "/rotina", label: "Rotina", icon: Calendar },
-    { to: "/metas", label: "Metas", icon: Target },
-  ];
-
+  const item = "h-12 min-w-0 flex-1 flex-col gap-1 rounded-full px-0 text-[9px] text-muted-foreground transition-all duration-200 hover:text-foreground [&_svg]:size-[18px]";
+  const active = { className: `${item} bg-secondary text-primary` };
   return (
-    <div className="fixed bottom-4 inset-x-0 z-50 px-4 max-w-md mx-auto pointer-events-none">
-      <nav className="pointer-events-auto bg-[#12141D]/90 backdrop-blur-xl border border-white/10 rounded-full p-2 shadow-2xl flex items-center justify-between">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPath === item.to;
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`flex flex-col items-center justify-center flex-1 py-1 px-2 rounded-full transition-all duration-200 ${
-                isActive ? "text-emerald-400" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium mt-0.5">{item.label}</span>
-            </Link>
-          );
-        })}
-
-        {/* Botão em Destaque Especial para o Assistente IA */}
-        <Link
-          to="/assistente"
-          className="flex items-center gap-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold px-4 py-2.5 rounded-full transition-all duration-200 shadow-lg shadow-emerald-400/20 active:scale-95"
-        >
-          <Sparkles className="h-4 w-4 fill-slate-950" />
-          <span className="text-xs tracking-tight">Assistente IA</span>
-        </Link>
-      </nav>
-    </div>
+    <nav aria-label="Navegação principal" className="pill-nav fixed inset-x-4 z-40 mx-auto max-w-[416px] rounded-full border p-1.5 backdrop-blur-xl">
+      <div className="flex items-center gap-1">
+        <Button asChild variant="ghost" className={item}><Link to="/" activeProps={active} activeOptions={{ exact: true, includeHash: true }}>
+          <Home className="h-5 w-5" /> Início
+        </Link></Button>
+        <Button asChild variant="ghost" className={item}><Link to="/financas" activeProps={active}>
+          <Wallet className="h-5 w-5" /> Finanças
+        </Link></Button>
+        <Button asChild variant="ghost" className={item}><Link to="/rotina" activeProps={active}>
+          <ListChecks className="h-5 w-5" /> Rotina
+        </Link></Button>
+        <Button asChild variant="ghost" className={item}><Link to="/treinos" activeProps={active}>
+          <Dumbbell className="h-5 w-5" /> Treinos
+        </Link></Button>
+        <Button asChild variant="ghost" className={item}><Link to="/" hash="metas" activeProps={active} activeOptions={{ exact: true, includeHash: true }}>
+          <Target className="h-5 w-5" /> Metas
+        </Link></Button>
+        <Button asChild className="h-12 w-12 shrink-0 rounded-full bg-neon p-0 text-neon-foreground hover:bg-neon/90 [&_svg]:size-5"><Link to="/assistente" aria-label="Assistente IA" title="Assistente IA">
+          <Sparkles />
+        </Link></Button>
+      </div>
+    </nav>
   );
 }
