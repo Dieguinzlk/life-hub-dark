@@ -10,8 +10,13 @@ describe("Home daily habits", () => {
     expect(habits[0]?.doneDates).toEqual(["2026-10-18"]);
   });
   it("scores only today's tasks and habits", () => {
-    const tasks = [{ id: "1", title: "Hoje", date: "2026-10-19", done: true }, { id: "2", title: "Amanhã", date: "2026-10-20", done: true }];
-    expect(dailyScore(tasks, [{ id: "water", name: "Água", doneDates: [] }], "2026-10-19")).toBe(50);
+    const tasks = [
+      { id: "1", title: "Hoje", date: "2026-10-19", done: true },
+      { id: "2", title: "Amanhã", date: "2026-10-20", done: true },
+    ];
+    expect(dailyScore(tasks, [{ id: "water", name: "Água", doneDates: [] }], "2026-10-19")).toBe(
+      50,
+    );
     expect(dailyScore([], [], "2026-10-19")).toBe(0);
   });
 });

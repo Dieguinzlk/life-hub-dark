@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@ai-sdk/google", () => ({ createGoogleGenerativeAI: mocks.createGoogle }));
 vi.mock("ai", async (importOriginal) => ({
-  ...await importOriginal<typeof import("ai")>(),
+  ...(await importOriginal<typeof import("ai")>()),
   convertToModelMessages: vi.fn(async () => []),
   streamText: mocks.streamText,
 }));
@@ -18,7 +18,9 @@ import { handleChat } from "@/lib/ai.server";
 function request() {
   return new Request("http://localhost/api/chat", {
     method: "POST",
-    body: JSON.stringify({ messages: [{ id: "1", role: "user", parts: [{ type: "text", text: "Olá" }] }] }),
+    body: JSON.stringify({
+      messages: [{ id: "1", role: "user", parts: [{ type: "text", text: "Olá" }] }],
+    }),
   });
 }
 
@@ -29,16 +31,33 @@ afterEach(() => {
 
 describe("Gemini server configuration", () => {
   it("rejects malformed, empty and oversized requests before contacting Gemini", async () => {
-    for (const body of [null, { messages: [] }, { messages: [{ id: "1", role: "user", parts: [{ type: "text", text: " " }] }] }]) {
-      const response = await handleChat(new Request("http://localhost/api/chat", { method: "POST", body: JSON.stringify(body) }));
+    for (const body of [
+      null,
+      { messages: [] },
+      { messages: [{ id: "1", role: "user", parts: [{ type: "text", text: " " }] }] },
+    ]) {
+      const response = await handleChat(
+        new Request("http://localhost/api/chat", { method: "POST", body: JSON.stringify(body) }),
+      );
       expect(response.status).toBe(400);
     }
-    const oversized = await handleChat(new Request("http://localhost/api/chat", { method: "POST", body: "x".repeat(128 * 1024 + 1) }));
+    const oversized = await handleChat(
+      new Request("http://localhost/api/chat", {
+        method: "POST",
+        body: "x".repeat(128 * 1024 + 1),
+      }),
+    );
     expect(oversized.status).toBe(413);
     expect(mocks.createGoogle).not.toHaveBeenCalled();
   });
   it("rejects a cross-origin request", async () => {
-    const response = await handleChat(new Request("http://localhost/api/chat", { method: "POST", headers: { origin: "https://other.example" }, body: "{}" }));
+    const response = await handleChat(
+      new Request("http://localhost/api/chat", {
+        method: "POST",
+        headers: { origin: "https://other.example" },
+        body: "{}",
+      }),
+    );
     expect(response.status).toBe(403);
   });
   it("rejects missing GEMINI_API_KEY without contacting the provider", async () => {

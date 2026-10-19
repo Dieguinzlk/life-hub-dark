@@ -1,6 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls, isToolUIPart, getToolName, type UIMessage } from "ai";
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithToolCalls,
+  isToolUIPart,
+  getToolName,
+  type UIMessage,
+} from "ai";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Bot, Send, Square, Check, X, Loader2, RotateCcw } from "lucide-react";
@@ -12,9 +18,15 @@ export const Route = createFileRoute("/assistente")({
   head: () => ({
     meta: [
       { title: "Assistente de IA — Gerenciador de Vida" },
-      { name: "description", content: "Converse em português e organize finanças, rotina, treinos e metas." },
+      {
+        name: "description",
+        content: "Converse em português e organize finanças, rotina, treinos e metas.",
+      },
       { property: "og:title", content: "Assistente de IA — Gerenciador de Vida" },
-      { property: "og:description", content: "Converse e execute ações nos seus módulos com confirmação." },
+      {
+        property: "og:description",
+        content: "Converse e execute ações nos seus módulos com confirmação.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -42,15 +54,20 @@ function Assistente() {
           const response = await fetch(url, options);
           if (!response.ok) {
             const body: unknown = await response.json().catch(() => null);
-            const message = body && typeof body === "object" && "error" in body && typeof body.error === "string"
-              ? body.error
-              : "Não foi possível falar com a IA agora. Tente novamente.";
+            const message =
+              body && typeof body === "object" && "error" in body && typeof body.error === "string"
+                ? body.error
+                : "Não foi possível falar com a IA agora. Tente novamente.";
             throw new Error(message);
           }
           return response;
         },
         prepareSendMessagesRequest: ({ messages }) => ({
-          body: { messages, today: today(), snapshot: shareRef.current ? buildSnapshot(dataRef.current) : null },
+          body: {
+            messages,
+            today: today(),
+            snapshot: shareRef.current ? buildSnapshot(dataRef.current) : null,
+          },
         }),
       }),
   );
@@ -85,7 +102,14 @@ function Assistente() {
       subtitle="Gemini · em português"
       action={
         messages.length > 0 ? (
-          <button onClick={() => { stop(); setMessages([]); setError(null); }} className="flex items-center gap-1 rounded-xl border px-3 py-2 text-sm text-muted-foreground">
+          <button
+            onClick={() => {
+              stop();
+              setMessages([]);
+              setError(null);
+            }}
+            className="flex items-center gap-1 rounded-xl border px-3 py-2 text-sm text-muted-foreground"
+          >
             <RotateCcw className="h-4 w-4" /> Nova
           </button>
         ) : undefined
@@ -94,18 +118,40 @@ function Assistente() {
       <label className="mb-4 flex items-center justify-between gap-3 rounded-2xl border bg-card p-3 text-sm">
         <span>
           <span className="font-semibold">Compartilhar meus dados</span>
-          <span className="block text-xs text-muted-foreground">Envia um resumo de finanças, tarefas, treinos e metas junto com suas mensagens.</span>
+          <span className="block text-xs text-muted-foreground">
+            Envia um resumo de finanças, tarefas, treinos e metas junto com suas mensagens.
+          </span>
         </span>
-        <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
+        <input
+          type="checkbox"
+          checked={share}
+          onChange={(e) => setShare(e.target.checked)}
+          className="h-5 w-5 accent-[var(--primary)]"
+        />
       </label>
 
       {messages.length === 0 && (
         <Card className="mb-4 space-y-2 text-sm text-muted-foreground">
-          <p className="flex items-center gap-2 font-semibold text-foreground"><Bot className="h-4 w-4 text-primary" /> Experimente pedir:</p>
-          {["Registre uma despesa de R$ 45 no mercado hoje", "Crie um treino de peito com supino 4x10 e crucifixo 3x12", "Crie uma tarefa para pagar o aluguel amanhã às 9h, prioridade alta", "Analise minhas despesas do mês"].map((s) => (
-            <button key={s} onClick={() => setInput(s)} className="block w-full rounded-xl border bg-secondary px-3 py-2 text-left">{s}</button>
+          <p className="flex items-center gap-2 font-semibold text-foreground">
+            <Bot className="h-4 w-4 text-primary" /> Experimente pedir:
+          </p>
+          {[
+            "Registre uma despesa de R$ 45 no mercado hoje",
+            "Crie um treino de peito com supino 4x10 e crucifixo 3x12",
+            "Crie uma tarefa para pagar o aluguel amanhã às 9h, prioridade alta",
+            "Analise minhas despesas do mês",
+          ].map((s) => (
+            <button
+              key={s}
+              onClick={() => setInput(s)}
+              className="block w-full rounded-xl border bg-secondary px-3 py-2 text-left"
+            >
+              {s}
+            </button>
           ))}
-          <p className="pt-1 text-xs">Toda alteração nos seus dados pede confirmação antes de ser salva.</p>
+          <p className="pt-1 text-xs">
+            Toda alteração nos seus dados pede confirmação antes de ser salva.
+          </p>
         </Card>
       )}
 
@@ -114,14 +160,26 @@ function Assistente() {
           <MessageView key={m.id} message={m} onResolve={resolve} data={data} />
         ))}
         {status === "submitted" && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Pensando…</p>
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Pensando…
+          </p>
         )}
-        {error && <p role="alert" className="rounded-xl border border-destructive/50 p-3 text-sm text-destructive">{error}</p>}
+        {error && (
+          <p
+            role="alert"
+            className="rounded-xl border border-destructive/50 p-3 text-sm text-destructive"
+          >
+            {error}
+          </p>
+        )}
         <div ref={endRef} />
       </div>
 
       <form
-        onSubmit={(e) => { e.preventDefault(); submit(); }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
         className="chat-composer fixed inset-x-0 z-30 border-t bg-background/95 px-4 py-2 backdrop-blur"
       >
         <div className="mx-auto flex max-w-md items-end gap-2">
@@ -129,16 +187,35 @@ function Assistente() {
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submit();
+              }
+            }}
             rows={1}
             placeholder="Escreva sua mensagem…"
             aria-label="Mensagem"
             className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border bg-card px-3 py-2.5 text-sm outline-none focus:border-primary"
           />
           {busy ? (
-            <button type="button" onClick={() => stop()} aria-label="Parar" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border"><Square className="h-4 w-4" /></button>
+            <button
+              type="button"
+              onClick={() => stop()}
+              aria-label="Parar"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border"
+            >
+              <Square className="h-4 w-4" />
+            </button>
           ) : (
-            <button type="submit" aria-label="Enviar" disabled={!input.trim()} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground disabled:opacity-40"><Send className="h-4 w-4" /></button>
+            <button
+              type="submit"
+              aria-label="Enviar"
+              disabled={!input.trim()}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground disabled:opacity-40"
+            >
+              <Send className="h-4 w-4" />
+            </button>
           )}
         </div>
       </form>
@@ -147,30 +224,71 @@ function Assistente() {
   );
 }
 
-function MessageView({ message, onResolve, data }: { message: UIMessage; onResolve: (id: string, tool: string, out: unknown) => void; data: ReturnType<typeof useData> }) {
+function MessageView({
+  message,
+  onResolve,
+  data,
+}: {
+  message: UIMessage;
+  onResolve: (id: string, tool: string, out: unknown) => void;
+  data: ReturnType<typeof useData>;
+}) {
   if (message.role === "user") {
     const text = message.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
-    return <div className="ml-10 rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">{text}</div>;
+    return (
+      <div className="ml-10 rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">
+        {text}
+      </div>
+    );
   }
   return (
     <div className="space-y-2 text-sm">
       {message.parts.map((p, i) => {
-        if (p.type === "text") return <div key={i} className="prose prose-sm prose-invert max-w-none leading-relaxed [&_p]:my-1 [&_ul]:my-1"><ReactMarkdown>{p.text}</ReactMarkdown></div>;
-        if (isToolUIPart(p)) return <ActionCard key={p.toolCallId} part={p} onResolve={onResolve} data={data} />;
+        if (p.type === "text")
+          return (
+            <div
+              key={i}
+              className="prose prose-sm prose-invert max-w-none leading-relaxed [&_p]:my-1 [&_ul]:my-1"
+            >
+              <ReactMarkdown>{p.text}</ReactMarkdown>
+            </div>
+          );
+        if (isToolUIPart(p))
+          return <ActionCard key={p.toolCallId} part={p} onResolve={onResolve} data={data} />;
         return null;
       })}
     </div>
   );
 }
 
-function ActionCard({ part, onResolve, data }: { part: Parameters<typeof getToolName>[0]; onResolve: (id: string, tool: string, out: unknown) => void; data: ReturnType<typeof useData> }) {
+function ActionCard({
+  part,
+  onResolve,
+  data,
+}: {
+  part: Parameters<typeof getToolName>[0];
+  onResolve: (id: string, tool: string, out: unknown) => void;
+  data: ReturnType<typeof useData>;
+}) {
   const name = getToolName(part);
-  if (part.state === "input-streaming") return <Card className="text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Preparando ação…</Card>;
+  if (part.state === "input-streaming")
+    return (
+      <Card className="text-muted-foreground">
+        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+        Preparando ação…
+      </Card>
+    );
   if (part.state === "output-available") {
     const out = part.output as { ok?: boolean; message?: string };
-    return <p className={`text-xs ${out?.ok ? "text-primary" : "text-muted-foreground"}`}>{out?.ok ? "✓ " : "✕ "}{out?.message}</p>;
+    return (
+      <p className={`text-xs ${out?.ok ? "text-primary" : "text-muted-foreground"}`}>
+        {out?.ok ? "✓ " : "✕ "}
+        {out?.message}
+      </p>
+    );
   }
-  if (part.state === "output-error") return <p className="text-xs text-destructive">✕ {part.errorText}</p>;
+  if (part.state === "output-error")
+    return <p className="text-xs text-destructive">✕ {part.errorText}</p>;
   if (part.state !== "input-available") return null;
 
   let prepared: ReturnType<typeof prepareAction> | null = null;
@@ -185,7 +303,14 @@ function ActionCard({ part, onResolve, data }: { part: Parameters<typeof getTool
     return (
       <Card className="space-y-2 border-destructive/50">
         <p className="text-destructive">Ação inválida: {invalid}</p>
-        <button onClick={() => onResolve(part.toolCallId, name, { ok: false, message: `Não executado: ${invalid}` })} className="rounded-xl border px-3 py-2">Avisar a IA</button>
+        <button
+          onClick={() =>
+            onResolve(part.toolCallId, name, { ok: false, message: `Não executado: ${invalid}` })
+          }
+          className="rounded-xl border px-3 py-2"
+        >
+          Avisar a IA
+        </button>
       </Card>
     );
   }
@@ -196,12 +321,27 @@ function ActionCard({ part, onResolve, data }: { part: Parameters<typeof getTool
       <div className="flex gap-2">
         <button
           onClick={() => {
-            try { onResolve(part.toolCallId, name, { ok: true, message: prepared.apply() }); }
-            catch (e) { onResolve(part.toolCallId, name, { ok: false, message: e instanceof Error ? e.message : "Falhou" }); }
+            try {
+              onResolve(part.toolCallId, name, { ok: true, message: prepared.apply() });
+            } catch (e) {
+              onResolve(part.toolCallId, name, {
+                ok: false,
+                message: e instanceof Error ? e.message : "Falhou",
+              });
+            }
           }}
           className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-primary py-2 font-semibold text-primary-foreground"
-        ><Check className="h-4 w-4" /> Confirmar</button>
-        <button onClick={() => onResolve(part.toolCallId, name, { ok: false, message: "Cancelado pelo usuário" })} className="flex flex-1 items-center justify-center gap-1 rounded-xl border py-2"><X className="h-4 w-4" /> Cancelar</button>
+        >
+          <Check className="h-4 w-4" /> Confirmar
+        </button>
+        <button
+          onClick={() =>
+            onResolve(part.toolCallId, name, { ok: false, message: "Cancelado pelo usuário" })
+          }
+          className="flex flex-1 items-center justify-center gap-1 rounded-xl border py-2"
+        >
+          <X className="h-4 w-4" /> Cancelar
+        </button>
       </div>
     </Card>
   );

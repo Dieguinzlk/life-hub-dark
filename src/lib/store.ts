@@ -133,14 +133,9 @@ function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
     habits: Array.isArray(saved?.habits) ? saved.habits : [],
     plans: Array.isArray(saved?.plans) ? saved.plans : [],
     workoutLogs: Array.isArray(saved?.workoutLogs) ? saved.workoutLogs : [],
-    workoutGoal:
-      typeof saved?.workoutGoal === "number" ? saved.workoutGoal : 3,
-    financeGoals: Array.isArray(saved?.financeGoals)
-      ? saved.financeGoals
-      : [],
-    healthGoals: Array.isArray(saved?.healthGoals)
-      ? saved.healthGoals
-      : [],
+    workoutGoal: typeof saved?.workoutGoal === "number" ? saved.workoutGoal : 3,
+    financeGoals: Array.isArray(saved?.financeGoals) ? saved.financeGoals : [],
+    healthGoals: Array.isArray(saved?.healthGoals) ? saved.healthGoals : [],
   };
 }
 
@@ -164,7 +159,9 @@ function load() {
   } catch {
     loadFailed = true;
     state = empty;
-    toast.error("Não foi possível ler os dados locais. Eles não foram apagados. Restaure um backup válido antes de salvar alterações.");
+    toast.error(
+      "Não foi possível ler os dados locais. Eles não foram apagados. Restaure um backup válido antes de salvar alterações.",
+    );
   }
 }
 
@@ -175,7 +172,9 @@ function setState(next: AppData) {
     try {
       localStorage.setItem(KEY, JSON.stringify(normalized));
     } catch {
-      toast.error("Não foi possível salvar neste aparelho. Libere espaço ou permita o armazenamento e tente novamente.");
+      toast.error(
+        "Não foi possível salvar neste aparelho. Libere espaço ou permita o armazenamento e tente novamente.",
+      );
       throw new Error("Alteração não salva: armazenamento indisponível.");
     }
   }
@@ -206,8 +205,7 @@ export function useData(): AppData {
   );
 }
 
-export const uid = () =>
-  Math.random().toString(36).slice(2) + Date.now().toString(36);
+export const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 export const today = () => {
   const date = new Date();
@@ -230,7 +228,8 @@ export const fmtDate = (value: string) => {
 
 export function exportBackup() {
   load();
-  if (loadFailed) throw new Error("Não é possível exportar: os dados locais não puderam ser lidos.");
+  if (loadFailed)
+    throw new Error("Não é possível exportar: os dados locais não puderam ser lidos.");
 
   const blob = new Blob([JSON.stringify(state, null, 2)], {
     type: "application/json",
