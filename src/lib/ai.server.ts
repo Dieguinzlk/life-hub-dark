@@ -188,7 +188,7 @@ export async function handleChat(request: Request): Promise<Response> {
       { status: 409 },
     );
   const google = createGoogleGenerativeAI({ apiKey });
-  
+
   // Atualizado para o modelo correto recomendado
   const model = process.env["GEMINI_MODEL"] || "models/gemini-3.8-flash";
 

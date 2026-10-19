@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Plus, Trash2, Check, Target, PiggyBank, TrendingUp, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { money, roundMoney } from "@/lib/data-validation";
+import { recordDebtPayment } from "@/lib/debt-payment";
 import type { FinanceGoal } from "@/lib/store";
 import { Page, Card } from "@/components/AppShell";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -614,23 +615,12 @@ function DebtCard({ debt }: { debt: { id: string; name: string; total: number; p
             alert("O pagamento não pode superar o saldo restante da dívida.");
             return;
           }
-          update((d) => ({
-            ...d,
-            debts: d.debts.map((y) =>
-              y.id === debt.id ? { ...y, paid: Math.min(y.total, y.paid + n) } : y,
-            ),
-            transactions: [
-              ...d.transactions,
-              {
-                id: uid(),
-                type: "despesa",
-                description: `Pagamento: ${debt.name}`,
-                amount: n,
-                category: "Dívidas",
-                date: today(),
-              },
-            ],
-          }));
+          try {
+            update((d) => recordDebtPayment(d, debt.id, n, { id: uid(), date: today() }));
+          } catch (error) {
+            alert(error instanceof Error ? error.message : "Não foi possível salvar o pagamento.");
+            return;
+          }
           setV("");
         }}
       >
