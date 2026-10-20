@@ -1,0 +1,44 @@
+
+name: Atualizar bun.lock
+
+on:
+  push:
+    branches:
+      - feat/gemini-lembretes-seguro
+    paths:
+      - package.json
+      - .github/workflows/update-bun-lock.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-lock:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+        with:
+          ref: feat/gemini-lembretes-seguro
+
+      - name: Configurar Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Atualizar dependencias
+        run: bun install
+
+      - name: Salvar bun.lock atualizado
+        run: |
+          if git diff --quiet -- bun.lock; then
+            echo "bun.lock ja esta atualizado"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bun.lock
+          git commit -m "chore: atualizar bun.lock"
+          git push
