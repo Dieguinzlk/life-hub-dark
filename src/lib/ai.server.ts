@@ -1,6 +1,7 @@
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import {
   APICallError,
+  RetryError,
   convertToModelMessages,
   streamText,
   tool,
@@ -107,15 +108,19 @@ export const tools = {
 };
 
 function errorText(error: unknown): string {
+  if (RetryError.isInstance(error)) return errorText(error.lastError);
+  if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError"))
+    return "A conversa foi cancelada ou demorou demais. Tente novamente.";
   const status = APICallError.isInstance(error) ? error.statusCode : undefined;
   if (status === 429)
     return "Limite de uso atingido no momento. Aguarde alguns instantes e tente de novo.";
   if (status === 401 || status === 403)
-    return "O Gemini recusou o acesso. Verifique a chave e as permissões no servidor.";
+    return "A Groq recusou o acesso. Confira a configuração e as permissões.";
   if (status === 400)
-    return "O Gemini não aceitou a solicitação. Verifique o modelo configurado no servidor.";
+    return "A Groq não aceitou a solicitação. Tente uma nova conversa.";
   if (status === 404)
-    return "O modelo configurado não está disponível no Gemini. Verifique GEMINI_MODEL no ambiente do deploy.";
+    return "O modelo não está disponível nesta conta Groq.";
+  if (status && status >= 500) return "A Groq está indisponível no momento. Tente novamente mais tarde.";
   return "Não foi possível falar com a IA agora. Verifique a conexão e tente de novo.";
 }
 
@@ -177,20 +182,17 @@ export async function handleChat(request: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  const apiKey = process.env["GEMINI_API_KEY"];
+  const apiKey = process.env["GERENCIADOR_DE_VIDA_API_KEY"]?.trim() || process.env["GROQ_API_KEY"]?.trim();
   if (!apiKey)
     return Response.json(
       {
         code: "AI_NOT_CONFIGURED",
         error:
-          "O Gemini ainda não está configurado neste ambiente. Configure GEMINI_API_KEY no servidor e tente novamente.",
+          "A Groq ainda não está configurada neste ambiente. Configure a chave segura do assistente e tente novamente.",
       },
       { status: 409 },
     );
-  const google = createGoogleGenerativeAI({ apiKey });
-
-  // Atualizado para o modelo correto recomendado
-  const model = process.env["GEMINI_MODEL"] || "models/gemini-3.8-flash";
+  const groq = createOpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1", name: "groq" });
 
   const messages = body.messages;
 
@@ -213,11 +215,12 @@ export async function handleChat(request: Request): Promise<Response> {
 
   try {
     const result = streamText({
-      model: google(model),
+      model: groq.chat("openai/gpt-oss-120b"),
       instructions,
       messages: await convertToModelMessages(messages),
       tools,
-      abortSignal: request.signal,
+      abortSignal: AbortSignal.any([request.signal, AbortSignal.timeout(90_000)]),
+      maxRetries: 1,
     });
 
     return result.toUIMessageStreamResponse({ originalMessages: messages, onError: errorText });
