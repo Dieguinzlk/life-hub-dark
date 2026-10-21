@@ -5,9 +5,11 @@
 - [x] Auditar configurações, dependências, rotas e erros de carregamento.
 - [x] Corrigir problemas comprovados de dados, backups e validação da IA.
 - [x] Validar os fluxos principais e apresentar relatório com limitações reais.
-- [ ] Verificar inferência real Gemini e deployment Vercel: depende da chave e acesso à configuração externa.
+- [ ] Verificar inferência real Groq e deployment externo: depende da chave e acesso à configuração externa.
 - [x] Reinspecionar o projeto e executar diagnóstico não destrutivo da nova auditoria.
 - [x] Aplicar correções localizadas aprovadas, sem trocar o modelo ou alterar armazenamento e visual.
 - [x] Validar regressões de pagamento, backup, leitura dos módulos e atualizar relatório com limites reais.
 - [ ] Verificar vínculo e branch oficiais do GitHub e proteção compartilhada da Vercel: depende de acesso externo.
 - [ ] Reavaliar segurança com análise profunda recente: depende de nova análise na aba Segurança.
+- [ ] Implementar estado final especificado: Groq, Negócio, agenda vinculada e lembretes, preservando JSON v1.
+- [ ] Validar cálculos, backups, ações e fluxos isolados; atualizar relatório desta execução.
