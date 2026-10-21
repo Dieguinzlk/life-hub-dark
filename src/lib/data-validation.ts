@@ -11,6 +11,21 @@ const text = z.string().trim().min(1);
 const nonneg = z.number().finite().nonnegative();
 const positive = z.number().finite().positive();
 const id = text;
+const movement = z.object({ date: validDate, amount: positive }).passthrough();
+export const saleSchema = z.object({
+  id, customer: text, product: text, quantity: positive, unitPrice: nonneg,
+  unitCost: nonneg.optional(), discount: nonneg, date: validDate,
+  paymentMethod: text, payments: z.array(movement), expectedDate: validDate.optional(), notes: z.string().optional(),
+}).passthrough().refine(s => s.quantity * s.unitPrice - s.discount > 0, 'Total inválido');
+export const expenseSchema = z.object({
+  id, description: text, category: text, amount: positive, date: validDate,
+  paymentMethod: z.string().optional(), paid: z.boolean(), paidDate: validDate.optional(),
+  dueDate: validDate.optional(), notes: z.string().optional(),
+}).passthrough();
+export const scheduledSchema = z.object({
+  id, kind: z.enum(['receber', 'pagar']), party: text, item: text,
+  amount: positive, dueDate: validDate, payments: z.array(movement), notes: z.string().optional(),
+}).passthrough();
 const exercise = z
   .object({ id, name: text, sets: positive.int(), reps: positive.int(), weight: nonneg.optional() })
   .passthrough();
@@ -28,6 +43,11 @@ const financeGoal = z
 export const backupSchema = z
   .object({
     version: z.literal(1).optional(),
+    business: z.object({
+      sales: z.array(saleSchema).optional(),
+      expenses: z.array(expenseSchema).optional(),
+      scheduled: z.array(scheduledSchema).optional(),
+    }).passthrough().optional(),
     transactions: z.array(
       z
         .object({
