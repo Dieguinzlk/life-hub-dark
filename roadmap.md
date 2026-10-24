@@ -11,5 +11,6 @@
 - [x] Validar regressões de pagamento, backup, leitura dos módulos e atualizar relatório com limites reais.
 - [ ] Verificar vínculo e branch oficiais do GitHub e proteção compartilhada da Vercel: depende de acesso externo.
 - [ ] Reavaliar segurança com análise profunda recente: depende de nova análise na aba Segurança.
+- [ ] Comparar ZIP e atualizar com Supabase, perfis, persistência isolada e Groq; preservar dados e interface.
 - [ ] Implementar estado final especificado: Groq, Negócio, agenda vinculada e lembretes, preservando JSON v1.
 - [ ] Validar cálculos, backups, ações e fluxos isolados; atualizar relatório desta execução.
