@@ -105,24 +105,93 @@ export const tools = {
     inputSchema: z.object({ planId: z.string(), date, notes: z.string().nullable() }),
     outputSchema: out,
   }),
+  add_business_sale: tool({
+    description:
+      "Registrar uma venda do negócio. O total é calculado como quantidade × valor unitário − desconto. Pagamentos/recebimentos são lançados depois com register_sale_payment.",
+    inputSchema: z.object({
+      customer: z.string().describe("Nome do comprador"),
+      product: z.string().describe("Produto ou serviço"),
+      quantity: z.number().describe("Quantidade, maior que zero"),
+      unitPrice: z.number().describe("Valor unitário em reais"),
+      unitCost: z.number().nullable().describe("Custo unitário em reais ou null se desconhecido"),
+      discount: z.number().nullable().describe("Desconto total em reais ou null"),
+      date,
+      paymentMethod: z.string().nullable().describe("Pix, Dinheiro, Cartão etc., ou null"),
+      expectedDate: z.string().nullable().describe("Data prevista de recebimento AAAA-MM-DD ou null"),
+      notes: z.string().nullable(),
+    }),
+    outputSchema: out,
+  }),
+  add_business_expense: tool({
+    description: "Registrar um gasto do negócio (nunca usar para despesas pessoais)",
+    inputSchema: z.object({
+      description: z.string(),
+      category: z
+        .enum(["Mercadorias e produtos", "Transporte e entregas", "Marketing", "Taxas e tarifas", "Outros gastos"]),
+      amount: z.number().describe("Valor positivo em reais"),
+      date,
+      paid: z.boolean().describe("true se já foi pago"),
+      dueDate: z.string().nullable().describe("Vencimento AAAA-MM-DD ou null"),
+      notes: z.string().nullable(),
+    }),
+    outputSchema: out,
+  }),
+  add_scheduled_payment: tool({
+    description: "Agendar um valor a receber ou a pagar do negócio",
+    inputSchema: z.object({
+      kind: z.enum(["receber", "pagar"]),
+      party: z.string().describe("Pessoa, cliente ou empresa"),
+      item: z.string().describe("O que foi comprado, vendido ou contratado"),
+      amount: z.number().describe("Valor positivo em reais"),
+      dueDate: z.string().describe("Data prevista AAAA-MM-DD"),
+      notes: z.string().nullable(),
+    }),
+    outputSchema: out,
+  }),
+  register_sale_payment: tool({
+    description:
+      "Registrar um recebimento (total ou parcial) de uma venda existente do negócio (precisa do id da venda dos dados compartilhados)",
+    inputSchema: z.object({
+      saleId: z.string(),
+      amount: z.number().describe("Valor recebido em reais, sem exceder o saldo restante"),
+      date,
+    }),
+    outputSchema: out,
+  }),
+  register_scheduled_payment: tool({
+    description:
+      "Registrar um pagamento/recebimento (total ou parcial) de um item agendado existente (precisa do id dos dados compartilhados)",
+    inputSchema: z.object({
+      scheduledId: z.string(),
+      amount: z.number().describe("Valor em reais, sem exceder o saldo restante"),
+      date,
+    }),
+    outputSchema: out,
+  }),
 };
 
-function errorText(error: unknown): string {
-  if (RetryError.isInstance(error)) return errorText(error.lastError);
-  if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError"))
-    return "A conversa foi cancelada ou demorou demais. Tente novamente.";
+export function errorText(error: unknown): string {
+  // Com novas tentativas, o SDK embrulha o erro real em RetryError.lastError.
+  if (RetryError.isInstance(error)) error = error.lastError;
   const status = APICallError.isInstance(error) ? error.statusCode : undefined;
+  const name = (error as { name?: unknown } | null)?.name;
+  if (name === "TimeoutError" || name === "AbortError")
+    return "A IA demorou demais para responder. Tente de novo em instantes.";
   if (status === 429)
     return "Limite de uso atingido no momento. Aguarde alguns instantes e tente de novo.";
+  if (status === 503 || (status !== undefined && status >= 500))
+    return "A Groq está sobrecarregada ou indisponível agora. Tente de novo em instantes.";
   if (status === 401 || status === 403)
-    return "A Groq recusou o acesso. Confira a configuração e as permissões.";
+    return "A Groq recusou o acesso. Verifique a chave e as permissões no servidor.";
   if (status === 400)
-    return "A Groq não aceitou a solicitação. Tente uma nova conversa.";
+    return "A Groq não aceitou a solicitação. Verifique a configuração no servidor.";
   if (status === 404)
-    return "O modelo não está disponível nesta conta Groq.";
-  if (status && status >= 500) return "A Groq está indisponível no momento. Tente novamente mais tarde.";
+    return `A Groq informou que o modelo ${GROQ_MODEL} não existe ou que sua chave não tem acesso a ele. Verifique o acesso ao modelo no console da Groq.`;
   return "Não foi possível falar com a IA agora. Verifique a conexão e tente de novo.";
 }
+
+export const GROQ_MODEL = "openai/gpt-oss-120b";
+export const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 
 export async function handleChat(request: Request): Promise<Response> {
   const origin = request.headers.get("origin");
@@ -182,17 +251,18 @@ export async function handleChat(request: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  const apiKey = process.env["GERENCIADOR_DE_VIDA_API_KEY"]?.trim() || process.env["GROQ_API_KEY"]?.trim();
+  const apiKey =
+    process.env["GERENCIADOR_DE_VIDA_API_KEY"]?.trim() || process.env["GROQ_API_KEY"]?.trim();
   if (!apiKey)
     return Response.json(
       {
         code: "AI_NOT_CONFIGURED",
         error:
-          "A Groq ainda não está configurada neste ambiente. Configure a chave segura do assistente e tente novamente.",
+          "A Groq ainda não está configurada neste ambiente. Configure GERENCIADOR_DE_VIDA_API_KEY no servidor e tente novamente.",
       },
       { status: 409 },
     );
-  const groq = createOpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1", name: "groq" });
+  const groq = createOpenAI({ apiKey, baseURL: GROQ_BASE_URL, name: "groq" });
 
   const messages = body.messages;
 
@@ -204,7 +274,8 @@ export async function handleChat(request: Request): Promise<Response> {
 
   const instructions = [
     "Você é o assistente do app Gerenciador de Vida. Responda sempre em português do Brasil, de forma curta e prática.",
-    "Ajude com rotina, tarefas, finanças (valores em BRL), hábitos, metas e treinos.",
+    "Ajude com rotina, tarefas, finanças pessoais (valores em BRL), negócio (vendas, gastos e pagamentos agendados), hábitos, metas e treinos.",
+    "Para o negócio: consulte negocioVendas, negocioAgendados e negocioGastos dos dados compartilhados. Novas vendas nascem com recebimento pendente; registre recebimentos/pagamentos com register_sale_payment ou register_scheduled_payment, sem exceder o saldo restante. Não confunda gastos do negócio com despesas pessoais.",
     "Quando o usuário pedir para criar/registrar/alterar algo, use as ferramentas. Cada ação é confirmada pelo usuário no aparelho antes de ser salva; não diga que salvou antes de receber o resultado.",
     "Se faltar uma informação essencial (ex.: valor de uma despesa), pergunte antes de chamar a ferramenta.",
     `Hoje é ${today}. Use datas no formato AAAA-MM-DD.`,
@@ -215,10 +286,11 @@ export async function handleChat(request: Request): Promise<Response> {
 
   try {
     const result = streamText({
-      model: groq.chat("openai/gpt-oss-120b"),
+      model: groq.chat(GROQ_MODEL),
       instructions,
       messages: await convertToModelMessages(messages),
       tools,
+      // Cancela se o usuário parar/fechar ou se a Groq passar de 90s.
       abortSignal: AbortSignal.any([request.signal, AbortSignal.timeout(90_000)]),
       maxRetries: 1,
     });
