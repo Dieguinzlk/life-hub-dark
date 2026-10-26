@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { backupSchema } from "@/lib/data-validation";
 import { toast } from "sonner";
-import type { BusinessData } from "@/lib/business";
+import { emptyBusiness, type BusinessData } from "@/lib/business";
 
 export type Transaction = {
   id: string;
@@ -108,6 +108,7 @@ export type AppData = {
 };
 
 const KEY = "gerenciador-de-vida:v1";
+let cacheKey = KEY;
 
 const empty: AppData = {
   version: 1,
@@ -121,7 +122,7 @@ const empty: AppData = {
   workoutGoal: 3,
   financeGoals: [],
   healthGoals: [],
-  business: { sales: [], expenses: [], scheduled: [] },
+  business: emptyBusiness(),
 };
 
 function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
@@ -140,10 +141,18 @@ function normalizeData(saved: Partial<AppData> | null | undefined): AppData {
     financeGoals: Array.isArray(saved?.financeGoals) ? saved.financeGoals : [],
     healthGoals: Array.isArray(saved?.healthGoals) ? saved.healthGoals : [],
     business: {
-      ...(saved?.business || {}),
-      sales: saved?.business?.sales ?? [],
-      expenses: saved?.business?.expenses ?? [],
-      scheduled: saved?.business?.scheduled ?? [],
+      sales: Array.isArray(saved?.business?.sales) ? saved.business.sales : [],
+      expenses: Array.isArray(saved?.business?.expenses) ? saved.business.expenses : [],
+      scheduled: Array.isArray(saved?.business?.scheduled) ? saved.business.scheduled : [],
+      customers: Array.isArray(saved?.business?.customers) ? saved.business.customers : [],
+      products: Array.isArray(saved?.business?.products) ? saved.business.products : [],
+      stockMoves: Array.isArray(saved?.business?.stockMoves) ? saved.business.stockMoves : [],
+      reminders: Array.isArray(saved?.business?.reminders) ? saved.business.reminders : [],
+      ...(saved?.business?.stock &&
+        typeof saved.business.stock.date === "string" &&
+        typeof saved.business.stock.initial === "number"
+        ? { stock: saved.business.stock }
+        : {}),
     },
   };
 }
@@ -179,7 +188,7 @@ function setState(next: AppData) {
 
   if (typeof window !== "undefined") {
     try {
-      localStorage.setItem(KEY, JSON.stringify(normalized));
+      localStorage.setItem(cacheKey, JSON.stringify(normalized));
     } catch {
       toast.error(
         "Não foi possível salvar neste aparelho. Libere espaço ou permita o armazenamento e tente novamente.",
@@ -189,9 +198,51 @@ function setState(next: AppData) {
   }
   state = normalized;
   loadFailed = false;
+  sink?.(normalized);
 
   listeners.forEach((listener) => listener());
 }
+
+let sink: ((data: AppData) => void) | null = null;
+
+/** Cloud sync: replaces in-memory/local state with the account's data and routes future saves to `onSave`. */
+export function attachCloud(userId: string, data: unknown, onSave: (data: AppData) => void) {
+  cacheKey = `${KEY}:user:${userId}`;
+  loaded = true;
+  loadFailed = false;
+  state = normalizeData(data as Partial<AppData>);
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(state));
+  } catch {
+    /* cache only */
+  }
+  sink = onSave;
+  listeners.forEach((listener) => listener());
+}
+
+export function detachCloud() {
+  sink = null;
+  cacheKey = KEY;
+  state = empty;
+  loaded = true;
+  listeners.forEach((listener) => listener());
+}
+
+/** Reads the device's legacy (pre-login) data, or null when absent/invalid. Never deletes it. */
+export function readLegacyLocal(): AppData | null {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!backupSchema.safeParse(parsed).success) return null;
+    return normalizeData(parsed as Partial<AppData>);
+  } catch {
+    return null;
+  }
+}
+
+export const LEGACY_KEY = KEY;
+export const emptyData = (): AppData => normalizeData(null);
 
 export function update(fn: (data: AppData) => AppData) {
   load();
