@@ -1,8 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { claimOwnership } from "@/lib/owner.functions";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRef } from "react";
-import { Download, Upload, Trash2, Smartphone, LogOut } from "lucide-react";
+import { Download, Upload, Trash2, Smartphone, LogOut, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Page, Card } from "@/components/AppShell";
 import { exportBackup, importBackup, clearAll } from "@/lib/store";
