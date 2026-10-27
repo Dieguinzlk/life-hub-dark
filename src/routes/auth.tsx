@@ -8,9 +8,9 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Entrar — Gerenciador de Vida" },
-      { name: "description", content: "Entre com sua conta Google para acessar seus dados." },
+      { name: "description", content: "Entre com e-mail ou Google para acessar seus dados." },
       { property: "og:title", content: "Entrar — Gerenciador de Vida" },
-      { property: "og:description", content: "Entre com sua conta Google para acessar seus dados." },
+      { property: "og:description", content: "Entre com e-mail ou Google para acessar seus dados." },
     ],
   }),
   component: AuthPage,
