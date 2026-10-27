@@ -1,8 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { claimOwnership } from "@/lib/owner.functions";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRef } from "react";
-import { Download, Upload, Trash2, Smartphone, LogOut } from "lucide-react";
+import { Download, Upload, Trash2, Smartphone, LogOut, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Page, Card } from "@/components/AppShell";
 import { exportBackup, importBackup, clearAll } from "@/lib/store";
@@ -101,5 +103,43 @@ function Ajustes() {
         </button>
       </Card>
     </Page>
+  );
+}
+
+const planLabel: Record<string, string> = { owner: "Proprietário", vip: "VIP", free: "Gratuito" };
+
+function PlanInfo({ btn }: { btn: string }) {
+  const claim = useServerFn(claimOwnership);
+  const { data: plan, refetch } = useQuery({
+    queryKey: ["my-plan"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("my_plan");
+      if (error) throw error;
+      return data as string;
+    },
+  });
+  return (
+    <div className="space-y-2">
+      <p className="text-sm">
+        Plano: <span className="font-semibold text-primary">{plan ? planLabel[plan] : "…"}</span>
+      </p>
+      {plan === "owner" ? (
+        <Link to="/admin" className={`${btn} border bg-secondary`}>
+          <ShieldCheck className="h-5 w-5" /> Área do proprietário
+        </Link>
+      ) : (
+        <button
+          onClick={async () => {
+            const r = await claim();
+            if (r.ok) toast.success(r.message);
+            else toast.error(r.message);
+            void refetch();
+          }}
+          className="text-xs text-muted-foreground underline"
+        >
+          Sou o proprietário
+        </button>
+      )}
+    </div>
   );
 }
