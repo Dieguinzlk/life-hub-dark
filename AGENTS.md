@@ -16,3 +16,4 @@
 - Validate backups atomically before replacing local data; currentAmount is the canonical accumulated goal balance, with no inferred contribution history or schema migration.
 - Debt payments use the pure src/lib/debt-payment.ts operation inside update to validate against the same current state that receives the expense, preventing stale-balance inconsistencies.
 - Business calculations and virtual sale agenda live in src/lib/business.ts; all records stay in the optional business field of JSON v1 — avoids duplicating linked sales or mixing personal expenses.
+- Access tiers (owner/VIP/free) live in the database: owner in user_roles (bootstrapped once by the server when the verified email matches the OWNER_EMAIL secret), VIP in vip_grants changed only through set_vip, AI quota enforced by consume_chat_quota inside /api/chat — clients can never grant themselves privileges.
